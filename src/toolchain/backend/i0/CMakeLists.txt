@@ -17,8 +17,8 @@ add_custom_command (
         I0.g
     COMMAND 
         antlr3 -o ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/I0.g
-        && mv -f I0Lexer.c I0Lexer.cpp
-        && mv -f I0Parser.c I0Parser.cpp
+        && move I0Lexer.c I0Lexer.cpp
+        && move I0Parser.c I0Parser.cpp
   )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
