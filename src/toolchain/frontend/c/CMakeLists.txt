@@ -17,8 +17,8 @@ add_custom_command (
         C.g
     COMMAND 
         antlr3 -o ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/C.g
-        && mv -f CLexer.c CLexer.cpp
-        && mv -f CParser.c CParser.cpp
+        && move CLexer.c CLexer.cpp
+        && move CParser.c CParser.cpp
   )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

@@ -13,8 +13,9 @@ class SemanticTreeNode;
 class Type;
 class FunctionExpression;
 
-struct Symbol
+class Symbol
 {   
+public:
     enum SymbolKind
     {
         ObjectName,

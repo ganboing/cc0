@@ -6,8 +6,9 @@
 class Symbol;
 class SymbolScope;
 
-struct SymbolRef
+class SymbolRef
 {
+public:
     SymbolRef();
     SymbolRef(SymbolScope *scope, std::string name);
     SymbolRef(Symbol* symbol);

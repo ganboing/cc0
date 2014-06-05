@@ -17,8 +17,8 @@ add_custom_command (
         Disa.g
     COMMAND 
         antlr3 -o ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/Disa.g
-        && mv -f DisaLexer.c DisaLexer.cpp
-        && mv -f DisaParser.c DisaParser.cpp
+        && move DisaLexer.c DisaLexer.cpp
+        && move DisaParser.c DisaParser.cpp
   )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
