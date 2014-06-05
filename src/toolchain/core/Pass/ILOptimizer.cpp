@@ -54,20 +54,25 @@ int ILOptimizer::DeleteNops(ILFunction* f)
 
 int ILOptimizer::OptimizeFunction(ILFunction *f)
 {
-    int optimized = 0;
-    std::vector<IL> ils;
-    ils = f->Body;
-    
-    std::cout << "Optimizing: function START" << std::endl;
-    
-    for (std::vector<IL>::iterator iit = ils.begin(); iit != ils.end(); ++iit)
-    {
-        IL &il = *iit;
-        
-        // safety ensurance
-        if ((iit+1) == f->Body.end() || iit == ils.begin()) {
+	int optimized = 0;
+	std::vector<IL> ils;
+	ils = f->Body;
+
+	std::cout << "Optimizing: function START" << std::endl;
+
+	for (std::vector<IL>::iterator iit = ils.begin(); iit != ils.end(); ++iit)
+	{
+		IL &il = *iit;
+
+		// safety ensurance
+		if (iit + 1 - ils.begin() == f->Body.end() - f->Body.begin()
+			|| iit == ils.begin())
+		{
+			continue;
+		}
+        /*if ((iit+1) == f->Body.end() || iit == ils.begin()) {
             continue;
-        }
+        }*/
         
         // branch
         std::cout << "Optimizing: " << il.ToString() << std::endl;
