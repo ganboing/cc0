@@ -5,6 +5,7 @@
 [Dd]ebug/
 [Rr]elease/
 libi0/
+test_obj/
 
 # Files may appear on Windows 
 Thumbs.db
