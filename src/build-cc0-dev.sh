@@ -16,6 +16,6 @@ fi
 
 # make VERBOSE=1
 make
-
+make install
 cd -
 
