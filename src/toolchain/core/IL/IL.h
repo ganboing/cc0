@@ -7,8 +7,6 @@
 #include <typeinfo>
 #include <core/Symbol/SymbolRef.h>
 #include <boost/serialization/vector.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/string.hpp>
 
 class Type;
 class SymbolRef;
