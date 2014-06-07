@@ -20,6 +20,8 @@
 
 #include "../../../external/mem.h"
 
+#include <boost/archive/xml_oarchive.hpp>
+
 void DumpScopeTypes(SymbolScope *scope, std::ofstream &dump, std::string prefix)
 {
     char buffer[100];
@@ -291,6 +293,12 @@ int main(int argc, char **argv)
     }
 
     context->IL = il;
+
+    {
+    	::std::ofstream _file("xml_serialization.xml");
+    	::boost::archive::xml_oarchive oa(_file);
+    	oa & il;
+    }
 
     // TODO: Optimize the IL
     ILOptimizer *ilopt = NULL;

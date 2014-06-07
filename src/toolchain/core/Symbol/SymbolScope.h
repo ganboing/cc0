@@ -5,7 +5,8 @@
 #include <core/Misc/Location.h>
 #include <vector>
 #include <stdint.h>
-
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
 
 class Expression;
 class Symbol;
@@ -13,6 +14,19 @@ class SemanticTreeNode;
 
 class SymbolScope
 {
+private:
+	friend class ::boost::serialization::access;
+	template<class A>
+	void serialize(A& ar, const unsigned int ver)
+	{
+		ar & BOOST_SERIALIZATION_NVP(_parentScope);
+		ar & BOOST_SERIALIZATION_NVP(_childScopes);
+		ar & BOOST_SERIALIZATION_NVP(_symbolTable);
+		ar & BOOST_SERIALIZATION_NVP(_kind);
+		ar & BOOST_SERIALIZATION_NVP(_expression);
+		ar & BOOST_SERIALIZATION_NVP(_memorySize);
+		//XXX serialize _rootScope!
+	}
 public:
     enum ScopeKind
     {
