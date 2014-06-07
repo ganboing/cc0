@@ -1,5 +1,6 @@
 #pragma once
 #include <core/Symbol/SymbolScope.h>
+#include <boost/serialization/map.hpp>
 
 class SymbolScope;
 class ExpressionVisitor;
@@ -7,6 +8,21 @@ class Type;
 class LValue;
 class Expression
 {
+private:
+	friend class ::boost::serialization::access;
+	template<class A>
+	void serialize(A& ar, const unsigned int)
+	{
+		ar & BOOST_SERIALIZATION_NVP(_parent);
+		ar & BOOST_SERIALIZATION_NVP(_nodeType);
+		ar & BOOST_SERIALIZATION_NVP(_scope);
+		ar & BOOST_SERIALIZATION_NVP(SourceLocation);
+		if(_tags.size())
+		{
+			::std::cerr<<"expression _tags has content\n";
+			exit(-1);
+		}
+	}
 public:
     enum ExpressionAction
     {
