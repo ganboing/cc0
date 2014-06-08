@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <core/Type/Type.h>
 
+Declaration::Declaration():_type(NULL), _offset(0)
+{
+}
+
 Declaration::Declaration(std::string name, Type * type)
 {
     _name = name;

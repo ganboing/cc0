@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 #include "SymbolAddress.h"
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
 #include <boost/serialization/string.hpp>
 
 class Expression;
