@@ -88,8 +88,6 @@ int main(int argc, char** argv) {
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
 
-#include <boost/archive/xml_oarchive.hpp>
-
 void DumpScopeTypes(SymbolScope *scope, std::ofstream &dump, std::string prefix)
 {
     char buffer[100];
@@ -369,7 +367,7 @@ int main(int argc, char **argv)
     {
     	::std::ofstream _file("xml_serialization.xml");
     	::boost::archive::xml_oarchive oa(_file);
-    	oa & il;
+    	oa & BOOST_SERIALIZATION_NVP(il);
     }
 
     // TODO: Optimize the IL

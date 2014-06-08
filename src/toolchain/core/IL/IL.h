@@ -19,12 +19,18 @@ class ConstantValue;
 class IL
 {
 private:
+	IL();
 	friend class ::boost::serialization::access;
 	template<class A>
-	void serialize(A& ar, const unsigned int ver)
+	void serialize(A& ar, const unsigned int)
 	{
 		ar & BOOST_SERIALIZATION_NVP(Opcode);
 		ar & BOOST_SERIALIZATION_NVP(Operands);
+		if(_tags.size())
+		{
+			::std::cerr<<"IL _tags is not empty!\n";
+			exit(-1);
+		}
 		//ar & BOOST_SERIALIZATION_NVP(_tags); FIXME: serialize
 	}
 public:
@@ -118,7 +124,7 @@ public:
     private:
     	friend class ::boost::serialization::access;
     	template<class A>
-    	void serialize(A& ar, const unsigned int ver)
+    	void serialize(A& ar, const unsigned int)
     	{
     		ar & BOOST_SERIALIZATION_NVP(OperandKind);
     		ar & BOOST_SERIALIZATION_NVP(OperandType);

@@ -10,9 +10,10 @@ class Symbol;
 class ILClass
 {
 private:
+	ILClass();
 	friend class ::boost::serialization::access;
 	template<class A>
-	void serialize(A& ar, const unsigned int ver)
+	void serialize(A& ar, const unsigned int)
 	{
 		ar & BOOST_SERIALIZATION_NVP(Functions);
 		ar & BOOST_SERIALIZATION_NVP(Scope);

@@ -7,9 +7,10 @@ class SymbolScope;
 class ILFunction
 {
 private:
+	ILFunction();
 	friend class ::boost::serialization::access;
 	template<class A>
-	void serialize(A& ar, const unsigned int ver)
+	void serialize(A& ar, const unsigned int)
 	{
 		ar & BOOST_SERIALIZATION_NVP(Body);
 		ar & BOOST_SERIALIZATION_NVP(Scope);
