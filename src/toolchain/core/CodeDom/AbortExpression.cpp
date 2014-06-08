@@ -2,7 +2,7 @@
 #include "ExpressionVisitor.h"
 #include <core/Type/VoidType.h>
 
-AbortExpression::AbortExpression():_deleteWatcher(false)
+AbortExpression::AbortExpression():Expression(Expression::Abort),_deleteWatcher(false)
 {
 }
 

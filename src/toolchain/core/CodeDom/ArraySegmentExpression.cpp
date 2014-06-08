@@ -1,7 +1,7 @@
 #include "ArraySegmentExpression.h"
 #include "ExpressionVisitor.h"
 
-ArraySegmentExpression::ArraySegmentExpression():_container(NULL), _start(NULL), _end(NULL)
+ArraySegmentExpression::ArraySegmentExpression():Expression(Expression::ArraySegment), _container(NULL), _start(NULL), _end(NULL)
 {
 }
 
