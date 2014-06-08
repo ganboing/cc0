@@ -15,15 +15,15 @@
 template <class A>
 void RegisterTypesWithBoost(A& ar)
 {
-	ar.template register_derived_with_boost<ArrayType>();
-	ar.template register_derived_with_boost<BooleanType>();
-	ar.template register_derived_with_boost<FloatingPointType>();
-	ar.template register_derived_with_boost<FunctionType>();
-	ar.template register_derived_with_boost<IntegerType>();
-	ar.template register_derived_with_boost<LabelType>();
-	ar.template register_derived_with_boost<PointerType>();
-	ar.template register_derived_with_boost<StructType>();
-	ar.template register_derived_with_boost<VoidType>();
+	ar.template register_type<ArrayType>();
+	ar.template register_type<BooleanType>();
+	ar.template register_type<FloatingPointType>();
+	ar.template register_type<FunctionType>();
+	ar.template register_type<IntegerType>();
+	ar.template register_type<LabelType>();
+	ar.template register_type<PointerType>();
+	ar.template register_type<StructType>();
+	ar.template register_type<VoidType>();
 }
 
 

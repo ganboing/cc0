@@ -2,7 +2,9 @@
 #include "FunctionType.h"
 #include <core/Symbol/Declaration.h>
 
-
+FunctionType::FunctionType() : _returnType(NULL), _parameters(NULL)
+{
+}
 
 FunctionType::FunctionType(Type* returnType, std::vector< Declaration* >* parameters)
 {
