@@ -1,7 +1,7 @@
 #include "NewRunnerExpression.h"
 #include "ExpressionVisitor.h"
 
-NewRunnerExpression::NewRunnerExpression(): Expression(Expression::NewRunner), _target(NULL), _watchList(NULL), _usingList(NULL), _arguments(NULL), _space(NULL)
+NewRunnerExpression::NewRunnerExpression(): Expression(Expression::NewRunner), _target(NULL), _arguments(NULL), _usingList(NULL), _watchList(NULL), _space(NULL)
 {
 }
 
