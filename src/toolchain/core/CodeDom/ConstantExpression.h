@@ -4,6 +4,7 @@
 #include "Expression.h"
 #include <string>
 #include <core/Type/Type.h>
+#include "core/Misc/ConstantValue.h"
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/nvp.hpp>
 

@@ -9,6 +9,7 @@ class AssignExpression : public Expression
 {
 private:
 	AssignExpression();
+	friend class ::boost::serialization::access;
 	template<class A>
 	void serialize(A& ar, const unsigned int)
 	{

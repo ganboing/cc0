@@ -2,6 +2,7 @@
 #define VARIABLEEXPRESSION_H
 
 #include "Expression.h"
+#include "core/Symbol/Symbol.h"
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/nvp.hpp>
 

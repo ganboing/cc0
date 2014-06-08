@@ -10,13 +10,17 @@
 
 SymbolScope* SymbolScope::_rootScope = NULL;
 
+SymbolScope::SymbolScope():	_parentScope(NULL), _kind(Global), _expression(NULL), _memorySize(0)
+{
+}
+
 SymbolScope* SymbolScope::GetRootScope()
 {
     return _rootScope;
 }
 
 
-SymbolScope::SymbolScope(SymbolScope *parentScope, ScopeKind kind, Expression *associatedExpression)
+SymbolScope::SymbolScope(SymbolScope *parentScope, ScopeKind kind, Expression *associatedExpression):_memorySize(0)
 {
     assert(parentScope != this);
     this->_kind = kind;

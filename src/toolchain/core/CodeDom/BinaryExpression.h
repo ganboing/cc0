@@ -9,6 +9,7 @@ class BinaryExpression : public Expression
 {
 private:
 	BinaryExpression();
+	friend class ::boost::serialization::access;
 	template<class A>
 	void serialize(A& ar, const unsigned int)
 	{

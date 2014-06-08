@@ -11,6 +11,7 @@ class GotoExpression : public Expression
 {
 private:
 	GotoExpression();
+	friend class ::boost::serialization::access;
 	template<class A>
 	void serialize(A& ar, const unsigned int)
 	{

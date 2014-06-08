@@ -15,9 +15,10 @@ class SemanticTreeNode;
 class SymbolScope
 {
 private:
+	SymbolScope();
 	friend class ::boost::serialization::access;
 	template<class A>
-	void serialize(A& ar, const unsigned int ver)
+	void serialize(A& ar, const unsigned int)
 	{
 		ar & BOOST_SERIALIZATION_NVP(_parentScope);
 		ar & BOOST_SERIALIZATION_NVP(_childScopes);

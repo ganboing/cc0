@@ -13,7 +13,6 @@
 #include "core/Type/StructType.h"
 #include "core/Type/VoidType.h"
 #include <boost/serialization/export.hpp>
-#include "Archives.h"
 
 BOOST_CLASS_EXPORT(ArrayType);
 BOOST_CLASS_EXPORT(BooleanType);

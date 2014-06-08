@@ -11,6 +11,7 @@ class ConvertExpression : public Expression
 {
 private:
 	ConvertExpression();
+	friend class ::boost::serialization::access;
 	template<class A>
 	void serialize(A& ar, const unsigned int)
 	{
