@@ -9,6 +9,7 @@ class LValue;
 class Expression
 {
 private:
+	Expression();
 	friend class ::boost::serialization::access;
 	template<class A>
 	void serialize(A& ar, const unsigned int)

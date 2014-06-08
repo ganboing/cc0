@@ -10,6 +10,7 @@
 #include "core/Type/VoidType.h"
 #include <fstream>
 #include <vector>
+#include "core/Serialization/ExportDeriveTypes.h"
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/serialization/vector.hpp>
 

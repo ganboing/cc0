@@ -2,6 +2,10 @@
 #include "ExpressionVisitor.h"
 #include <core/Type/VoidType.h>
 
+AbortExpression::AbortExpression():_deleteWatcher(false)
+{
+}
+
 Type* AbortExpression::GetType()
 {
     return new VoidType();

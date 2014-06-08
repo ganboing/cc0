@@ -1,3 +1,6 @@
+#ifndef CORE_SERIALIZATION_EXPORT_DERIVE_TYPES_H
+#define CORE_SERIALIZATION_EXPORT_DERIVE_TYPES_H
+
 #include "core/Symbol/Declaration.h"
 #include "core/Type/Type.h"
 #include "core/Type/ArrayType.h"
@@ -21,3 +24,6 @@ BOOST_CLASS_EXPORT(LabelType);
 BOOST_CLASS_EXPORT(PointerType);
 BOOST_CLASS_EXPORT(StructType);
 BOOST_CLASS_EXPORT(VoidType);
+
+#endif
+
