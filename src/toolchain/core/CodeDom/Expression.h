@@ -3,6 +3,7 @@
 #include <core/IL/IL.h>
 #include <core/Type/Type.h>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/string.hpp>
 
 class SymbolScope;
 class ExpressionVisitor;
@@ -43,7 +44,7 @@ private:
 			}
 			else
 			{
-				::std::cerr<<"expression _tag not handled!\n";
+				::std::cerr<<"on save: expression _tag "<<current_tag<< " not handled!\n";
 				exit(-1);
 			}
 		}
@@ -60,12 +61,13 @@ private:
 		ar & BOOST_SERIALIZATION_NVP(_nodeType);
 		ar & BOOST_SERIALIZATION_NVP(_scope);
 		ar & BOOST_SERIALIZATION_NVP(SourceLocation);
-		size_t _tag_size;
-		ar & BOOST_SERIALIZATION_NVP(_tag_size);
-		for(size_t i = 0; i < _tag_size; ++i)
+		size_t _tags_size;
+		ar & BOOST_SERIALIZATION_NVP(_tags_size);
+		for(size_t i = 0; i < _tags_size; ++i)
 		{
 			std::string current_tag;
 			BOOST_SERIALIZATION_NVP(current_tag);
+			::std::cout<<"on load: expression _tag: "<<current_tag<<"\n";
 			if(current_tag == "Constant")
 			{
 				ConstantValue* pObj;
@@ -86,12 +88,10 @@ private:
 			}
 			else
 			{
-				::std::cerr<<"expression _tag not handled!\n";
+				::std::cerr<<"on load: expression _tag "<<current_tag<< " not handled!\n";
 				exit(-1);
 			}
-
 		}
-		//FIXME:finish it
 	}
 	BOOST_SERIALIZATION_SPLIT_MEMBER();
 public:

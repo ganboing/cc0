@@ -1,7 +1,9 @@
 #include "core/Serialization/ExportDeriveTypes.h"
 #include "core/Serialization/ExportDeriveExpressions.h"
 #include <boost/archive/xml_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 /*
 ::std::vector<Type*>* generate_Type_test_case() {
 	::std::vector<Declaration*>* decl_arr = new ::std::vector<Declaration*>();
@@ -366,8 +368,16 @@ int main(int argc, char **argv)
 
     {
     	::std::ofstream _file("xml_serialization.xml");
+    	::std::ofstream _file2("obj.bin");
     	::boost::archive::xml_oarchive oa(_file);
+    	::boost::archive::binary_oarchive oa2(_file2);
     	oa & BOOST_SERIALIZATION_NVP(il);
+    	oa2 & BOOST_SERIALIZATION_NVP(il);
+    }
+    {
+    	::std::ifstream _file("xml_serialization.xml");
+    	::boost::archive::xml_iarchive ia(_file);
+    	ia & BOOST_SERIALIZATION_NVP(il);
     }
 
     // TODO: Optimize the IL
