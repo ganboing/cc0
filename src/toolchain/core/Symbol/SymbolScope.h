@@ -26,8 +26,10 @@ private:
 		ar & BOOST_SERIALIZATION_NVP(_kind);
 		ar & BOOST_SERIALIZATION_NVP(_expression);
 		ar & BOOST_SERIALIZATION_NVP(_memorySize);
-		//XXX serialize _rootScope!
+		//FIXME: serialize _rootScope!
 	}
+public:
+	//template<class A>
 public:
     enum ScopeKind
     {

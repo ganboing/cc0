@@ -2,7 +2,7 @@
 #include "ExpressionVisitor.h"
 #include <core/Type/VoidType.h>
 
-LoopExpression::LoopExpression():Expression(Expression::Loop), _initializingExpression(NULL), _conditionExpression(NULL), _incrementExpression(NULL), _bodyExpression(NULL), _checkCondAfter(NULL)
+LoopExpression::LoopExpression():Expression(Expression::Loop), _initializingExpression(NULL), _conditionExpression(NULL), _incrementExpression(NULL), _bodyExpression(NULL), _checkCondAfter(false)
 {
 }
 

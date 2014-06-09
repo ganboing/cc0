@@ -16,6 +16,7 @@ private:
 	{
 		ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(Expression);
 		//ar & BOOST_SERIALIZATION_NVP(_labelID);
+		//FIXME: serialize static field of _labelID of LabelExpression
 		ar & BOOST_SERIALIZATION_NVP(_symbol);
 	}
 private:

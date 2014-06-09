@@ -31,7 +31,6 @@ private:
 			::std::cerr<<"IL _tags is not empty!\n";
 			exit(-1);
 		}
-		//ar & BOOST_SERIALIZATION_NVP(_tags); FIXME: serialize
 	}
 public:
     enum ILOpcode 
