@@ -6,7 +6,7 @@ add_executable(il_gen
 
 add_dependencies(il_gen core disa i0 langc flat)
 
-target_link_libraries(il_gen core langc disa i0 flat boost_serialization)
+target_link_libraries(il_gen core langc disa i0 flat boost_serialization boost_filesystem boost_system)
 
 install(TARGETS il_gen DESTINATION bin)
 
