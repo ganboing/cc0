@@ -26,7 +26,7 @@ private:
 		for(std::map<std::string, void *>::const_iterator i = _tags.begin(), iE = _tags.end(); i != iE; ++i)
 		{
 			const std::string& current_tag = i->first;
-			BOOST_SERIALIZATION_NVP(current_tag);
+			ar & BOOST_SERIALIZATION_NVP(current_tag);
 			if(current_tag == "Constant")
 			{
 				ConstantValue* pObj = reinterpret_cast<ConstantValue*>(i->second);
@@ -66,7 +66,7 @@ private:
 		for(size_t i = 0; i < _tags_size; ++i)
 		{
 			std::string current_tag;
-			BOOST_SERIALIZATION_NVP(current_tag);
+			ar & BOOST_SERIALIZATION_NVP(current_tag);
 			::std::cout<<"on load: expression _tag: "<<current_tag<<"\n";
 			if(current_tag == "Constant")
 			{
