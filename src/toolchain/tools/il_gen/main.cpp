@@ -29,7 +29,7 @@ void print_usage(char *cmd)
 "cc0(il_gen) - A c0 compiler which generates i0 code.\n"
 "\n"
 "Usage: \n"
-"    il_gen [-g] infile [-o outfile] [-h|--help]\n"
+"    il_gen [-g|--debug] infile [-o outfile] [-h|--help]\n"
 "\n"
 "\n"
 "Options:\n"
