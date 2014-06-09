@@ -2,6 +2,8 @@
 #include <core/Misc/Location.h>
 #include <vector>
 #include <stdint.h>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/string.hpp>
 
 class ANTLR3_PARSER_struct;
 class Expression;
@@ -15,6 +17,26 @@ enum {
 
 class CompilationContext
 {
+private:
+	friend class ::boost::serialization::access;
+	template<class A>
+	void serialize(A& ar, const unsigned int)
+	{
+		ar & BOOST_SERIALIZATION_NVP(Debug);
+		ar & BOOST_SERIALIZATION_NVP(CompileOnly);
+		ar & BOOST_SERIALIZATION_NVP(CodeType);
+		ar & BOOST_SERIALIZATION_NVP(NumErrors);
+		ar & BOOST_SERIALIZATION_NVP(NumWarnings);
+		ar & BOOST_SERIALIZATION_NVP(TextStart);
+		ar & BOOST_SERIALIZATION_NVP(DataStart);
+		ar & BOOST_SERIALIZATION_NVP(RDataStart);
+		ar & BOOST_SERIALIZATION_NVP(BssStart);
+		ar & BOOST_SERIALIZATION_NVP(MaxStackFrame);
+		ar & BOOST_SERIALIZATION_NVP(InputFiles);
+		ar & BOOST_SERIALIZATION_NVP(OutputFile);
+		ar & BOOST_SERIALIZATION_NVP(IL);
+		ar & BOOST_SERIALIZATION_NVP(CurrentFileName);
+	}
 private:
     static CompilationContext *_instance;
 public:

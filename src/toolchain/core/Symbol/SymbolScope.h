@@ -26,7 +26,7 @@ private:
 		ar & BOOST_SERIALIZATION_NVP(_kind);
 		ar & BOOST_SERIALIZATION_NVP(_expression);
 		ar & BOOST_SERIALIZATION_NVP(_memorySize);
-		//FIXME: serialize _rootScope!
+		//XXX: _rootScope serialization is not needed!
 	}
 public:
 	//template<class A>
