@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     {
     	::boost::filesystem::path output_file_path(c0_obj_file);
     	output_file_path.replace_extension(".bin");
-    	c0_bin_file = output_file_path.c_str();
+    	c0_bin_file = output_file_path.string();
     	if(is_debug)
     	{
     		std::cout<< "output file is " << CompilationContext::GetInstance()->OutputFile << "\n";

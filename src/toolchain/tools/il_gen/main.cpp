@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     {
     	::boost::filesystem::path output_file_path(CompilationContext::GetInstance()->InputFiles[0]);
     	output_file_path.replace_extension(".c0obj");
-    	c0_obj_file = output_file_path.c_str();
+    	c0_obj_file = output_file_path.string();
     	if(CompilationContext::GetInstance()->Debug)
     	{
     		std::cout<< "output file is " << c0_obj_file << "\n";
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     for(std::vector<std::string>::iterator it = inputFiles.begin(); it != inputFiles.end(); ++it)
     {
         std::string inputFile = CompilationContext::GetInstance()->InputFiles.front();
-        std::string fileExt = ::boost::filesystem::path(inputFile).extension().c_str();
+        std::string fileExt = ::boost::filesystem::path(inputFile).extension().string();
         if(fileExt == ".c" || fileExt == ".c0")
         {
         	std::string tmpFileName = inputFile + ".tmp";
