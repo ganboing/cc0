@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string>
+#include <iostream>
 
 CompilationContext *CompilationContext::_instance = NULL;
 
@@ -14,6 +15,16 @@ CompilationContext* CompilationContext::GetInstance()
     }
 
     return _instance;
+}
+
+void CompilationContext::__SetInstance(CompilationContext* p)
+{
+	if(_instance == NULL)
+	{
+		::std::cerr << "CompilationContext already has instance!\n";
+		exit(-1);
+	}
+	_instance = p;
 }
 
 CompilationContext::CompilationContext() :TextStart(0), DataStart(0),RDataStart(0), BssStart(0), CodeDom(NULL), IL(NULL), Target(NULL), CurrentParser(NULL)

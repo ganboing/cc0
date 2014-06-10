@@ -7,6 +7,12 @@
 #include <stdio.h>
 #include <core/Type/Type.h>
 #include <core/CodeDom/Expression.h>
+#include "core/IL/ILProgram.h"
+
+void SymbolScope::__SetRootScopt(ILProgram* il_program)
+{
+	_rootScope = il_program->Scope;
+}
 
 SymbolScope* SymbolScope::_rootScope = NULL;
 

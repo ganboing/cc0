@@ -27,7 +27,7 @@ if(CC0_USE_STATIC_CRT)
 			CMAKE_C_FLAGS_MINSIZEREL
 			CMAKE_C_FLAGS_DEBUG)
 			#set("${flag}" "${${flag}} -static -static-libgcc")
-			set("${flag}" "${${flag}} -Wall -Wextra -g3")
+			set("${flag}" "${${flag}} -Wall -Wextra -g3 -Wno-unused-variable -Wno-unused-parameter")
 		endforeach()
 	endif()
 	
@@ -39,7 +39,7 @@ if(CC0_USE_STATIC_CRT)
 			CMAKE_CXX_FLAGS_MINSIZEREL
 			CMAKE_CXX_FLAGS_DEBUG)
 			#set(${flag} "${${flag}} -static -static-libgcc -static-libstdc++")
-			set(${flag} "${${flag}} -Wall -Wextra -g3")
+			set(${flag} "${${flag}} -Wall -Wextra -g3 -Wno-unused-variable -Wno-unused-parameter")
 		endforeach()
 	endif()
 	

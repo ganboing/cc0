@@ -67,7 +67,6 @@ private:
 		{
 			std::string current_tag;
 			ar & BOOST_SERIALIZATION_NVP(current_tag);
-			::std::cout<<"on load: expression _tag: "<<current_tag<<"\n";
 			if(current_tag == "Constant")
 			{
 				ConstantValue* pObj;

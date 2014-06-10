@@ -43,66 +43,25 @@ void print_usage(char *)
 
 int main(int argc, char **argv)
 {
-    bool codeTypeDefined = false;
-
-    CompilationContext *context = CompilationContext::GetInstance();
-
-    // context->TextStart =  0x400000000;
-    // context->DataStart =  0x400004000;
-    // context->RDataStart = 0x400008000;
-    // Use macros from the sys_config.h
-    context->TextStart =  I0_CODE_BEGIN;
-    context->DataStart =  I0_CODE_BEGIN + 0x4000;
-    context->RDataStart = I0_CODE_BEGIN + 0x8000;
-
-    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
-    // context->BssStart =   0x440000000;
-    context->BssStart =   AMR_OFFSET_BEGIN;
-
-    // NOTE: default targe code type
-    // Only CODE_TYPE_I0 is supported
-    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-    codeTypeDefined = true;
 
     ::std::string c0_obj_file;
+    ::std::string c0_bin_file;
+    bool is_debug(false);
 
     for(int i = 1; i < argc; i++)
     {
         if(strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
         {
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
-            	CompilationContext::GetInstance()->OutputFile = argv[++i];
+				c0_bin_file = argv[++i];
 			} else {
-				CompilationContext::GetInstance()->OutputFile = "";
+				c0_bin_file = "";
 			}
         }
         else if( (strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0) )
         {
-            CompilationContext::GetInstance()->Debug = true;
+            is_debug = true;
         }
-        /*
-        else if (strcmp(argv[i], "--i0") == 0)
-        {
-            if (codeTypeDefined) {
-                printf("--i0 and --disa can not be used at the same time.\n"
-                        "Specify one code type only.\n");
-                return -1;
-            }
-            CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-            codeTypeDefined = true;
-        }
-        else if (strcmp(argv[i], "--disa") == 0)
-        {
-            if (codeTypeDefined) {
-                printf("--i0 and --disa can not be used at the same time.\n"
-                        "Specify one code type only.\n");
-                return -11;
-            }
-
-            CompilationContext::GetInstance()->CodeType = CODE_TYPE_DISA;
-            codeTypeDefined = true;
-        }
-        */
         else if ( (strcmp(argv[i], "--help") == 0) || strcmp(argv[i], "-h") == 0 )
         {
             print_usage(argv[0]);
@@ -125,22 +84,45 @@ int main(int argc, char **argv)
     	return 1;
     }
 
-    if(CompilationContext::GetInstance()->OutputFile.size() == 0)
+    if(c0_bin_file.size() == 0)
     {
     	::boost::filesystem::path output_file_path(c0_obj_file);
     	output_file_path.replace_extension(".bin");
-    	CompilationContext::GetInstance()->OutputFile = output_file_path.c_str();
-    	if(CompilationContext::GetInstance()->Debug)
+    	c0_bin_file = output_file_path.c_str();
+    	if(is_debug)
     	{
     		std::cout<< "output file is " << CompilationContext::GetInstance()->OutputFile << "\n";
     	}
     }
 
+    CompilationContext* context = NULL;
     {
     	::std::ifstream filestream(c0_obj_file.c_str());
     	::boost::archive::xml_iarchive c0_obj_archive(filestream);
     	c0_obj_archive & BOOST_SERIALIZATION_NVP(context);
     }
+    CompilationContext::__SetInstance(context);
+
+    context->Debug = is_debug;
+    context->OutputFile = c0_bin_file;
+
+    // context->TextStart =  0x400000000;
+    // context->DataStart =  0x400004000;
+    // context->RDataStart = 0x400008000;
+    // Use macros from the sys_config.h
+    context->TextStart =  I0_CODE_BEGIN;
+    context->DataStart =  I0_CODE_BEGIN + 0x4000;
+    context->RDataStart = I0_CODE_BEGIN + 0x8000;
+
+    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
+    // context->BssStart =   0x440000000;
+    context->BssStart =   AMR_OFFSET_BEGIN;
+
+    // NOTE: default targe code type
+    // Only CODE_TYPE_I0 is supported
+    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
+
+    SymbolScope::__SetRootScopt(context->IL);
 
     std::vector<std::string> &inputFiles = CompilationContext::GetInstance()->InputFiles;
 

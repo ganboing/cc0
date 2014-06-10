@@ -11,6 +11,7 @@
 class Expression;
 class Symbol;
 class SemanticTreeNode;
+class ILProgram;
 
 class SymbolScope
 {
@@ -29,7 +30,7 @@ private:
 		//XXX: _rootScope serialization is not needed!
 	}
 public:
-	//template<class A>
+	static void __SetRootScopt(ILProgram*);
 public:
     enum ScopeKind
     {

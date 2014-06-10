@@ -73,8 +73,7 @@ int main(int argc, char **argv)
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
             	c0_obj_file = argv[++i];
 			}
-			else
-			{
+			else{
 				c0_obj_file = "";
 			}
         }
