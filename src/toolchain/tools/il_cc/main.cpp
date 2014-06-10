@@ -62,6 +62,8 @@ int main(int argc, char **argv)
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
     codeTypeDefined = true;
 
+    ::std::string c0_obj_file;
+
     for(int i = 1; i < argc; i++)
     {
         if(strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
@@ -106,13 +108,19 @@ int main(int argc, char **argv)
         }
         else
         {
-        	if(CompilationContext::GetInstance()->InputFiles.size())
+        	if(c0_obj_file.size())
         	{
         		print_usage(argv[0]);
         		return 1;
         	}
-            CompilationContext::GetInstance()->InputFiles.push_back(argv[i]);
+        	c0_obj_file = argv[i];
         }
+    }
+
+    if(c0_obj_file.size() == 0)
+    {
+    	std::cerr<< "please specify input files\n";
+    	return 1;
     }
 
     CompilationContext::GetInstance()->CompileOnly = true;

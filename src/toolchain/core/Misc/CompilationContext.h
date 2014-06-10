@@ -22,18 +22,7 @@ private:
 	template<class A>
 	void serialize(A& ar, const unsigned int)
 	{
-		ar & BOOST_SERIALIZATION_NVP(Debug);
-		ar & BOOST_SERIALIZATION_NVP(CompileOnly);
-		ar & BOOST_SERIALIZATION_NVP(CodeType);
-		ar & BOOST_SERIALIZATION_NVP(NumErrors);
-		ar & BOOST_SERIALIZATION_NVP(NumWarnings);
-		ar & BOOST_SERIALIZATION_NVP(TextStart);
-		ar & BOOST_SERIALIZATION_NVP(DataStart);
-		ar & BOOST_SERIALIZATION_NVP(RDataStart);
-		ar & BOOST_SERIALIZATION_NVP(BssStart);
-		ar & BOOST_SERIALIZATION_NVP(MaxStackFrame);
 		ar & BOOST_SERIALIZATION_NVP(InputFiles);
-		ar & BOOST_SERIALIZATION_NVP(OutputFile);
 		ar & BOOST_SERIALIZATION_NVP(IL);
 		ar & BOOST_SERIALIZATION_NVP(CurrentFileName);
 	}

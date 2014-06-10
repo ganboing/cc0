@@ -23,7 +23,7 @@
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
 
-void print_usage(char *cmd)
+void print_usage(char *)
 {
     printf(
 "cc0(il_gen) - A c0 compiler which generates i0 code.\n"
@@ -45,7 +45,6 @@ void print_usage(char *cmd)
 
 int main(int argc, char **argv)
 {
-
     bool codeTypeDefined = false;
 
     CompilationContext *context = CompilationContext::GetInstance();
@@ -67,14 +66,14 @@ int main(int argc, char **argv)
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
     codeTypeDefined = true;
 
+    ::std::string c0_obj_file;
+
     for(int i = 1; i < argc; i++)
     {
         if(strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
         {
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
-            	CompilationContext::GetInstance()->OutputFile = argv[++i];
-			} else {
-				CompilationContext::GetInstance()->OutputFile = "";
+            	c0_obj_file = argv[++i];
 			}
         }
         else if( (strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0) )
@@ -126,13 +125,15 @@ int main(int argc, char **argv)
     	return 1;
     }
 
-    if(CompilationContext::GetInstance()->OutputFile.size() == 0)
+    if(c0_obj_file.size() == 0)
     {
     	::boost::filesystem::path output_file_path(CompilationContext::GetInstance()->InputFiles[0]);
-    	::std::cout<<"file extension == " << output_file_path.extension() << "\n";
     	output_file_path.replace_extension(".c0obj");
-    	CompilationContext::GetInstance()->OutputFile = output_file_path.c_str();
-    	::std::cout<<"will output to " << output_file_path <<"\n";
+    	c0_obj_file = output_file_path.c_str();
+    	if(CompilationContext::GetInstance()->Debug)
+    	{
+    		std::cout<< "output file is " << c0_obj_file << "\n";
+    	}
     }
 
     CompilationContext::GetInstance()->CompileOnly = true;
@@ -214,8 +215,8 @@ int main(int argc, char **argv)
     context->IL = il;
 
     {
-    	::std::ofstream c0_obj_file(context->OutputFile.c_str());
-    	::boost::archive::xml_oarchive c0_obj_archive(c0_obj_file);
+    	::std::ofstream filestream(c0_obj_file.c_str());
+    	::boost::archive::xml_oarchive c0_obj_archive(filestream);
     	c0_obj_archive & BOOST_SERIALIZATION_NVP(context);
     }
 
