@@ -15,11 +15,13 @@
 #include <core/Symbol/SymbolAddressAllocator.h>
 #include <core/Pass/ConstantPropagation.h>
 #include <core/Pass/TypeDeduction.h>
+#include "core/Serialization/ExportDeriveTypes.h"
+#include "core/Serialization/ExportDeriveExpressions.h"
 
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
 
-void print_usage(char *cmd)
+void print_usage(char *)
 {
     printf(
 "cc0(il_cc) - A c0 compiler which generates i0 code.\n"
@@ -123,7 +125,16 @@ int main(int argc, char **argv)
     	return 1;
     }
 
-    CompilationContext::GetInstance()->CompileOnly = true;
+    if(CompilationContext::GetInstance()->OutputFile.size() == 0)
+    {
+    	::boost::filesystem::path output_file_path(c0_obj_file);
+    	output_file_path.replace_extension(".bin");
+    	CompilationContext::GetInstance()->OutputFile = output_file_path.c_str();
+    	if(CompilationContext::GetInstance()->Debug)
+    	{
+    		std::cout<< "output file is " << CompilationContext::GetInstance()->OutputFile << "\n";
+    	}
+    }
 
     ILProgram *il = NULL;
 

@@ -10,8 +10,6 @@
 
 #include <core/Core.h>
 #include <frontend/c/CSourceParser.h>
-// #include <backend/disa/DisaCodeGenerator.h>
-// #include <backend/disa/DisaAssemblyParser.h>
 #include <backend/i0/I0CodeGenerator.h>
 #include <binary/flat/FlatFileWriter.h>
 #include <core/Symbol/SymbolAddressAllocator.h>
