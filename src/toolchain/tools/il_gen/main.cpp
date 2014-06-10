@@ -73,6 +73,10 @@ int main(int argc, char **argv)
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
             	c0_obj_file = argv[++i];
 			}
+			else
+			{
+				c0_obj_file = "";
+			}
         }
         else if( (strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0) )
         {

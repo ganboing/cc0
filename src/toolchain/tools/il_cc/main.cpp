@@ -136,93 +136,15 @@ int main(int argc, char **argv)
     	}
     }
 
-    ILProgram *il = NULL;
+    {
+    	::std::ifstream filestream(c0_obj_file.c_str());
+    	::boost::archive::xml_iarchive c0_obj_archive(filestream);
+    	c0_obj_archive & BOOST_SERIALIZATION_NVP(context);
+    }
 
     std::vector<std::string> &inputFiles = CompilationContext::GetInstance()->InputFiles;
 
-    if(inputFiles.size() == 0)
-    {
-        print_usage(argv[0]);
-        return 0;
-    }
-    else if(inputFiles.size() != 1)
-    {
-        //FIXME: Multiple input files
-        assert("Not implemented: multiple input files.");
-    }
-
-    for(std::vector<std::string>::iterator it = inputFiles.begin(); it != inputFiles.end(); ++it)
-    {
-        std::string inputFile = CompilationContext::GetInstance()->InputFiles.front();
-        std::string fileExt = inputFile.substr(inputFile.find_last_of(".") + 1);
-        if(fileExt == "c" || fileExt == "c0")
-        {
-
-            char tmpFileName[255];
-            sprintf(tmpFileName, "%s.tmp", inputFile.c_str());
-
-            // tmpnam(tmpFileName);
-            printf("temp file is: %s\n", tmpFileName);
-
-            context->CurrentFileName = inputFile;
-
-            std::string cmdline = "cpp " + inputFile + " -o " + tmpFileName;
-            if(system(cmdline.c_str()) != 0)
-            {
-               return -1;
-            }
-
-            if(CompilationContext::GetInstance()->Debug)
-            {
-                printf("--------------------------------------\n");
-                printf("parsing...\n");
-            }
-
-            CSourceParser *frontend = new CSourceParser();
-            frontend->Parse(tmpFileName);
-
-            // Note: leave tmpFile for user to check
-            // remove(tmpFileName);
-
-            if(CompilationContext::GetInstance()->Debug)
-            {
-                printf("--------------------------------------\n");
-                printf("ConstantPropagation...\n");
-            }
-
-            ConstantPropagation *constantPropagation = new ConstantPropagation();
-            context->CodeDom->Accept(constantPropagation);
-
-            if(CompilationContext::GetInstance()->Debug)
-            {
-                printf("--------------------------------------\n");
-                printf("ConstantPropagation...\n");
-            }
-
-            TypeDeduction *typeDeduction = new TypeDeduction();
-            context->CodeDom->Accept(typeDeduction);
-
-            if(CompilationContext::GetInstance()->Debug)
-            {
-                printf("--------------------------------------\n");
-                printf("codeDom Dump:\n");
-                ExpressionTreeDumper *codeDomDump = new ExpressionTreeDumper();
-
-                context->CodeDom->Accept(codeDomDump);
-            }
-
-            ILGenerator *ilgen = new ILGenerator();
-            context->CodeDom->Accept(ilgen);
-
-            il = ilgen->GetILProgram();
-        }
-    }
-
-    if(il == NULL)
-    {
-        return -1;
-    }
-
+    ILProgram* il = context->IL;
 
     if((CompilationContext::GetInstance()->Debug || CompilationContext::GetInstance()->CompileOnly) && il != NULL)
     {
@@ -275,47 +197,6 @@ int main(int argc, char **argv)
 
     // print optimized IL
     il = context->IL;
-    if((CompilationContext::GetInstance()->Debug || CompilationContext::GetInstance()->CompileOnly) && il != NULL)
-    {
-        // printf("--------------------------------------\n");
-        // printf("Optimized IL:\n");
-        std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
-        int pos = baseFileName.find_last_of(".");
-        if(pos != -1)
-        {
-            baseFileName = baseFileName.substr(0, pos) + ".opt.il";
-        }
-
-        std::ofstream ildump(baseFileName.c_str());
-        for(std::vector<ILClass *>::iterator cit = il->Claases.begin(); cit != il->Claases.end(); ++cit)
-        {
-            ILClass *c = *cit;
-
-            ildump << "class " <<  c->ClassSymbol->Name << std::endl << "{" << std::endl;
-
-            for(std::vector<ILFunction *>::iterator fit = c->Functions.begin(); fit != c->Functions.end(); ++fit)
-            {
-                ILFunction *f = *fit;
-                ildump << "    function " <<  f->FunctionSymbol->Name << std::endl << "    {" << std::endl;
-                for(std::vector<IL>::iterator iit = f->Body.begin(); iit != f->Body.end(); ++iit)
-                {
-                    IL &il = *iit;
-                    if(il.Opcode == IL::Label)
-                    {
-                        ildump << "        " << il.ToString() << std::endl;
-                    }
-                    else
-                    {
-                        ildump << "            " << il.ToString() << std::endl;
-                    }
-                }
-                ildump << "    }" << std::endl;
-            }
-            ildump << "}" << std::endl;
-        }
-
-        ildump.close();
-    }
 
     std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
     int pos = baseFileName.find_last_of(".");
@@ -324,10 +205,6 @@ int main(int argc, char **argv)
         baseFileName = baseFileName.substr(0, pos);
     }
     std::string mapFileName = baseFileName + ".var";
-
-    std::ofstream mapdump(mapFileName.c_str());
-    DumpScopeTypes(SymbolScope::GetRootScope(), mapdump, "");
-    mapdump.close();
 
     // if it is for -c, return now
     if(CompilationContext::GetInstance()->CompileOnly) {
@@ -399,10 +276,6 @@ int main(int argc, char **argv)
         }
         objdump.close();
 
-
-        std::ofstream mapdump(mapFileName.c_str());
-        DumpScope(SymbolScope::GetRootScope(), mapdump);
-        mapdump.close();
     }
 
     printf("Maximum stack frame size: 0x%llX\n", (long long )(context->MaxStackFrame));

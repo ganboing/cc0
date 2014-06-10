@@ -6,7 +6,7 @@ add_executable(il_cc
 
 add_dependencies(il_cc core disa i0 langc flat)
 
-target_link_libraries(il_cc core langc disa i0 flat boost_serialization)
+target_link_libraries(il_cc core langc disa i0 flat boost_serialization boost_filesystem boost_system)
 
 install(TARGETS il_cc DESTINATION bin)
 
