@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     for(std::vector<std::string>::iterator it = inputFiles.begin(); it != inputFiles.end(); ++it)
     {
         std::string inputFile = CompilationContext::GetInstance()->InputFiles.front();
-        std::string fileExt = ::boost::filesystem::path(inputFile).extension();
+        std::string fileExt = ::boost::filesystem::path(::boost::filesystem::path(inputFile).extension()).string();
         if(fileExt == ".c" || fileExt == ".c0")
         {
         	std::string tmpFileName = inputFile + ".tmp";
