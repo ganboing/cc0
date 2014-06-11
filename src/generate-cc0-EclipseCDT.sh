@@ -5,7 +5,7 @@ cwd=$(pwd)
 
 echo "running from ""$dir"
 
-mkdir -p $cwd/cc0-build
+mkdir -p $cwd/cc0-EclipseCDT
 
 echo "generating to "$cwd"/cc0-EclipseCDT"
 
