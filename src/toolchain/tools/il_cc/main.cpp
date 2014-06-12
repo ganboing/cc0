@@ -17,6 +17,7 @@
 #include <core/Pass/TypeDeduction.h>
 #include "core/Serialization/ExportDeriveTypes.h"
 #include "core/Serialization/ExportDeriveExpressions.h"
+#include "core/Serialization/ObjFormat.h"
 
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
@@ -43,9 +44,25 @@ void print_usage(char *)
 
 int main(int argc, char **argv)
 {
+    CompilationContext *context = CompilationContext::GetInstance();
+
+    // context->TextStart =  0x400000000;
+    // context->DataStart =  0x400004000;
+    // context->RDataStart = 0x400008000;
+    // Use macros from the sys_config.h
+    context->TextStart =  I0_CODE_BEGIN;
+    context->DataStart =  I0_CODE_BEGIN + 0x4000;
+    context->RDataStart = I0_CODE_BEGIN + 0x8000;
+
+    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
+    // context->BssStart =   0x440000000;
+    context->BssStart =   AMR_OFFSET_BEGIN;
+
+    // NOTE: default targe code type
+    // Only CODE_TYPE_I0 is supported
+    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
 
     ::std::string c0_obj_file;
-    ::std::string c0_bin_file;
     bool is_debug(false);
 
     for(int i = 1; i < argc; i++)
@@ -53,14 +70,14 @@ int main(int argc, char **argv)
         if(strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
         {
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
-				c0_bin_file = argv[++i];
+				context->OutputFile = argv[++i];
 			} else {
-				c0_bin_file = "a.bin";
+				context->OutputFile = "a.bin";
 			}
         }
         else if( (strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0) )
         {
-            is_debug = true;
+            CompilationContext::GetInstance()->Debug = true;
         }
         else if ( (strcmp(argv[i], "--help") == 0) || strcmp(argv[i], "-h") == 0 )
         {
@@ -84,42 +101,22 @@ int main(int argc, char **argv)
     	return 1;
     }
 
-    if(c0_bin_file.size() == 0)
+    if(context->OutputFile.size() == 0)
     {
     	std::cerr << "please specify output file\n";
     	return 1;
     }
-
-    CompilationContext* context = NULL;
     {
+    	CC0Obj obj;
     	::std::ifstream filestream(c0_obj_file.c_str());
     	::boost::archive::xml_iarchive c0_obj_archive(filestream);
-    	c0_obj_archive & BOOST_SERIALIZATION_NVP(context);
+    	c0_obj_archive & BOOST_SERIALIZATION_NVP(obj);
+    	context->IL = obj.second;
+    	context->CodeDom = obj.first;
     }
     CompilationContext::__SetInstance(context);
 
-    context->Debug = is_debug;
-    context->OutputFile = c0_bin_file;
-
-    // context->TextStart =  0x400000000;
-    // context->DataStart =  0x400004000;
-    // context->RDataStart = 0x400008000;
-    // Use macros from the sys_config.h
-    context->TextStart =  I0_CODE_BEGIN;
-    context->DataStart =  I0_CODE_BEGIN + 0x4000;
-    context->RDataStart = I0_CODE_BEGIN + 0x8000;
-
-    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
-    // context->BssStart =   0x440000000;
-    context->BssStart =   AMR_OFFSET_BEGIN;
-
-    // NOTE: default targe code type
-    // Only CODE_TYPE_I0 is supported
-    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-
     SymbolScope::__SetRootScopt(context->IL);
-
-    std::vector<std::string> &inputFiles = CompilationContext::GetInstance()->InputFiles;
 
     ILProgram* il = context->IL;
 
@@ -203,29 +200,6 @@ int main(int argc, char **argv)
     }
 
     codegen->Generate(context->IL);
-
-
-    for(std::vector<std::string>::iterator it = inputFiles.begin(); it != inputFiles.end(); ++it)
-    {
-        std::string inputFile = context->InputFiles.front();
-        std::string fileExt = inputFile.substr(inputFile.find_last_of(".") + 1);
-        if(fileExt == "s")
-        {
-            SourceParser *parser = NULL;
-            /* if (CompilationContext::GetInstance()->CodeType == CODE_TYPE_DISA) {
-                parser = new DisaAssemblyParser();
-            } else
-            */
-            {
-                // TODO: support i0 assembly
-                printf(".s file is not supported for i0.\n");
-                return -1;
-            }
-            parser->Parse(inputFile);
-        } else if(fileExt == "c") {
-            printf("WARNING: It is recommended to use .c0 instead of .c as the source file extension for c0 programs.\n");
-        }
-    }
 
     if((CompilationContext::GetInstance()->Debug || CompilationContext::GetInstance()->CompileOnly))
     {

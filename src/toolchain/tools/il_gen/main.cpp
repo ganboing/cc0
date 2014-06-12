@@ -17,6 +17,7 @@
 #include <core/Pass/TypeDeduction.h>
 #include "core/Serialization/ExportDeriveTypes.h"
 #include "core/Serialization/ExportDeriveExpressions.h"
+#include "core/Serialization/ObjFormat.h"
 
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
@@ -43,8 +44,6 @@ void print_usage(char *)
 
 int main(int argc, char **argv)
 {
-    bool codeTypeDefined = false;
-
     CompilationContext *context = CompilationContext::GetInstance();
 
     // context->TextStart =  0x400000000;
@@ -62,7 +61,6 @@ int main(int argc, char **argv)
     // NOTE: default targe code type
     // Only CODE_TYPE_I0 is supported
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-    codeTypeDefined = true;
 
     ::std::string c0_obj_file;
 
@@ -81,29 +79,6 @@ int main(int argc, char **argv)
         {
             CompilationContext::GetInstance()->Debug = true;
         }
-        /*
-        else if (strcmp(argv[i], "--i0") == 0)
-        {
-            if (codeTypeDefined) {
-                printf("--i0 and --disa can not be used at the same time.\n"
-                        "Specify one code type only.\n");
-                return -1;
-            }
-            CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-            codeTypeDefined = true;
-        }
-        else if (strcmp(argv[i], "--disa") == 0)
-        {
-            if (codeTypeDefined) {
-                printf("--i0 and --disa can not be used at the same time.\n"
-                        "Specify one code type only.\n");
-                return -11;
-            }
-
-            CompilationContext::GetInstance()->CodeType = CODE_TYPE_DISA;
-            codeTypeDefined = true;
-        }
-        */
         else if ( (strcmp(argv[i], "--help") == 0) || strcmp(argv[i], "-h") == 0 )
         {
             print_usage(argv[0]);
@@ -216,9 +191,10 @@ int main(int argc, char **argv)
     context->IL = il;
 
     {
+    	CC0Obj obj(context->CodeDom, context->IL);
     	::std::ofstream filestream(c0_obj_file.c_str());
     	::boost::archive::xml_oarchive c0_obj_archive(filestream);
-    	c0_obj_archive & BOOST_SERIALIZATION_NVP(context);
+    	c0_obj_archive & BOOST_SERIALIZATION_NVP(obj);
     }
 
     return 0;
