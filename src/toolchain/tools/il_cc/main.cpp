@@ -163,7 +163,6 @@ int main(int argc, char **argv)
     	context->IL = obj.second;
     	context->CodeDom = obj.first;
     }
-    CompilationContext::__SetInstance(context);
 
     SymbolScope::__SetRootScopt(context->IL);
 

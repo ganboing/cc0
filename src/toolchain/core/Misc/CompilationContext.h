@@ -30,7 +30,6 @@ private:
     static CompilationContext *_instance;
 public:
     static CompilationContext * GetInstance();
-    static void __SetInstance(CompilationContext*);
 public:
     bool Debug;
     bool CompileOnly;
