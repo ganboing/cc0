@@ -22,6 +22,55 @@
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
 
+void DumpScopeTypes(SymbolScope *scope, std::ofstream &dump, std::string prefix)
+{
+    char buffer[100];
+    dump << prefix << "SCOPE " << scope << " type " << scope->GetScopeKind() << " {" << std::endl;
+
+    std::string cur_prefix = prefix + "  ";
+
+    for(std::map<std::string, Symbol *>::iterator it = scope->GetSymbolTable()->begin(); it != scope->GetSymbolTable()->end(); ++it)
+    {
+        Symbol *symbol = it->second;
+        // if (typeid(*(symbol->DeclType)) == typeid(FunctionType) || scope->GetScopeKind() == SymbolScope::Global)
+        {
+        	dump << cur_prefix <<
+        			symbol->Name << "\t" <<
+        			symbol->DeclType->ToString() << "\t" <<
+        			std::endl;
+        }
+    }
+
+    for(std::vector<SymbolScope *>::iterator it = scope->GetChildScopes()->begin(); it != scope->GetChildScopes()->end(); ++it)
+    {
+        SymbolScope *cs = *it;
+        DumpScopeTypes(cs, dump, cur_prefix);
+    }
+
+    dump << prefix << "}" << std::endl;
+}
+
+
+void DumpScope(SymbolScope *scope, std::ofstream &dump)
+{
+    char buffer[100];
+
+    for(std::map<std::string, Symbol *>::iterator it = scope->GetSymbolTable()->begin(); it != scope->GetSymbolTable()->end(); ++it)
+    {
+        Symbol *symbol = it->second;
+        if (typeid(*(symbol->DeclType)) == typeid(FunctionType) || scope->GetScopeKind() == SymbolScope::Global)
+        {
+            sprintf(buffer, "%0llX\t%s", (long long)symbol->Address, symbol->Name.c_str());
+            dump << buffer << std::endl;
+        }
+    }
+
+    for(std::vector<SymbolScope *>::iterator it = scope->GetChildScopes()->begin(); it != scope->GetChildScopes()->end(); ++it)
+    {
+        SymbolScope *cs = *it;
+        DumpScope(cs, dump);
+    }
+}
 void print_usage(char *)
 {
     printf(
@@ -171,6 +220,47 @@ int main(int argc, char **argv)
 
     // print optimized IL
     il = context->IL;
+    if((CompilationContext::GetInstance()->Debug || CompilationContext::GetInstance()->CompileOnly) && il != NULL)
+    {
+        // printf("--------------------------------------\n");
+        // printf("Optimized IL:\n");
+        std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
+        int pos = baseFileName.find_last_of(".");
+        if(pos != -1)
+        {
+            baseFileName = baseFileName.substr(0, pos) + ".opt.il";
+        }
+
+        std::ofstream ildump(baseFileName.c_str());
+        for(std::vector<ILClass *>::iterator cit = il->Claases.begin(); cit != il->Claases.end(); ++cit)
+        {
+            ILClass *c = *cit;
+
+            ildump << "class " <<  c->ClassSymbol->Name << std::endl << "{" << std::endl;
+
+            for(std::vector<ILFunction *>::iterator fit = c->Functions.begin(); fit != c->Functions.end(); ++fit)
+            {
+                ILFunction *f = *fit;
+                ildump << "    function " <<  f->FunctionSymbol->Name << std::endl << "    {" << std::endl;
+                for(std::vector<IL>::iterator iit = f->Body.begin(); iit != f->Body.end(); ++iit)
+                {
+                    IL &il = *iit;
+                    if(il.Opcode == IL::Label)
+                    {
+                        ildump << "        " << il.ToString() << std::endl;
+                    }
+                    else
+                    {
+                        ildump << "            " << il.ToString() << std::endl;
+                    }
+                }
+                ildump << "    }" << std::endl;
+            }
+            ildump << "}" << std::endl;
+        }
+
+        ildump.close();
+    }
 
     std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
     int pos = baseFileName.find_last_of(".");
@@ -179,6 +269,10 @@ int main(int argc, char **argv)
         baseFileName = baseFileName.substr(0, pos);
     }
     std::string mapFileName = baseFileName + ".var";
+
+    std::ofstream mapdump(mapFileName.c_str());
+    DumpScopeTypes(SymbolScope::GetRootScope(), mapdump, "");
+    mapdump.close();
 
     // if it is for -c, return now
     if(CompilationContext::GetInstance()->CompileOnly) {
@@ -227,6 +321,10 @@ int main(int argc, char **argv)
         }
         objdump.close();
 
+
+        std::ofstream mapdump(mapFileName.c_str());
+        DumpScope(SymbolScope::GetRootScope(), mapdump);
+        mapdump.close();
     }
 
     printf("Maximum stack frame size: 0x%llX\n", (long long )(context->MaxStackFrame));
