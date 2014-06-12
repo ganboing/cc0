@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
 				c0_bin_file = argv[++i];
 			} else {
-				c0_bin_file = "";
+				c0_bin_file = "a.bin";
 			}
         }
         else if( (strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0) )
@@ -86,13 +86,8 @@ int main(int argc, char **argv)
 
     if(c0_bin_file.size() == 0)
     {
-    	::boost::filesystem::path output_file_path(c0_obj_file);
-    	output_file_path.replace_extension(".bin");
-    	c0_bin_file = output_file_path.string();
-    	if(is_debug)
-    	{
-    		std::cout<< "output file is " << CompilationContext::GetInstance()->OutputFile << "\n";
-    	}
+    	std::cerr << "please specify output file\n";
+    	return 1;
     }
 
     CompilationContext* context = NULL;
