@@ -16,6 +16,7 @@ class ILProgram;
 class SymbolScope
 {
 private:
+	friend ILProgram* merge(::std::vector<ILProgram*> ilprograms);
 	SymbolScope();
 	friend class ::boost::serialization::access;
 	template<class A>
