@@ -31,8 +31,6 @@
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
 
-static bool is_debugging = false;
-
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offsetof(type,member) );})
@@ -111,6 +109,30 @@ typedef ::std::set<SymbolScope*> scope_set_t;
 typedef ::std::vector<SymbolScope*> scope_vec_t;
 
 }
+
+void DumpScope(SymbolScope *scope, std::ofstream &dump) {
+	char buffer[100];
+
+	for (std::map<std::string, Symbol *>::iterator it =
+			scope->GetSymbolTable()->begin();
+			it != scope->GetSymbolTable()->end(); ++it) {
+		Symbol *symbol = it->second;
+		if (typeid(*(symbol->DeclType)) == typeid(FunctionType)
+				|| scope->GetScopeKind() == SymbolScope::Global) {
+			sprintf(buffer, "%0llX\t%s", (long long) symbol->Address,
+					symbol->Name.c_str());
+			dump << buffer << std::endl;
+		}
+	}
+
+	for (std::vector<SymbolScope *>::iterator it =
+			scope->GetChildScopes()->begin();
+			it != scope->GetChildScopes()->end(); ++it) {
+		SymbolScope *cs = *it;
+		DumpScope(cs, dump);
+	}
+}
+
 CC0Obj load_file_context(const char* file) {
 	::std::ifstream f(file);
 	::boost::archive::xml_iarchive obj_file(f);
@@ -148,6 +170,8 @@ void fix_ilprogram_il_symref(ILProgram* ilprogram, SymbolScope* new_global) {
 			ilprogram->Claases.end(); i != iE; ++i) {
 		for (::std::vector<ILFunction *>::iterator j = (*i)->Functions.begin(),
 				jE = (*i)->Functions.end(); j != jE; ++j) {
+			assert((*j)->FunctionSymbol->Scope == old_global);
+			(*j)->FunctionSymbol->Scope = new_global;
 			for (::std::vector<IL>::iterator k = (*j)->Body.begin(), kE =
 					(*j)->Body.end(); k != kE; ++k) {
 				for (::std::vector<IL::ILOperand>::iterator p =
@@ -173,6 +197,15 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 	scope_vec_t* new_sub_scopes = new_global_scope->GetChildScopes();
 	for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE =
 			ilprograms.end(); i != iE; ++i) {
+		fix_ilprogram_il_symref(*i, new_global_scope);
+	}
+	for (scope_vec_t::iterator i = new_sub_scopes->begin(), iE =
+			new_sub_scopes->end(); i != iE; ++i) {
+		(*i)->_parentScope = new_global_scope;
+	}
+	::std::vector<ILFunction*> new_global_functions;
+	for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE =
+			ilprograms.end(); i != iE; ++i) {
 		SymbolScope* sym_scope = (*i)->Scope;
 		global_scope_set.insert(sym_scope);
 		symbol_map_t& sym_tab = sym_scope->_symbolTable;
@@ -180,12 +213,13 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 		new_sub_scopes->insert(new_sub_scopes->end(),
 				sym_scope->GetChildScopes()->begin(),
 				sym_scope->GetChildScopes()->end());
+		for (::std::vector<ILClass*>::iterator j = (*i)->Claases.begin(), jE =
+				(*i)->Claases.end(); j != jE; ++j) {
+			new_global_functions.insert(new_global_functions.end(),
+					(*j)->Functions.begin(), (*j)->Functions.end());
+		}
 	}
-	//XXX:for(scope_vec_t::iterator i = new_sub_scopes->begin(), iE = new_sub_scopes->end();i!=iE;++i)
-	//{
-	//(*i)->_parentScope = new_global_scope;
-	//}
-	if (is_debugging) {
+	if (CompilationContext::GetInstance()->Debug) {
 		::std::cout << "----------\n";
 	}
 	while (!pool.empty()) {
@@ -195,13 +229,13 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 			/*const symbol_map_t* map_in_scope = i->second;
 			 const ::std::string& symbol_in_tab = i->first->first;
 			 realloc_map[container_of(map_in_scope, SymbolScope, _symbolTable)].insert(symbol_in_tab);*/
-			if (is_debugging) {
+			if (CompilationContext::GetInstance()->Debug) {
 				std::cout << i->first->first << " with symbol == "
 						<< i->first->second << " on scope " << i->second
 						<< "\n";
 			}
 		}
-		if (is_debugging) {
+		if (CompilationContext::GetInstance()->Debug) {
 			::std::cout << "----------\n";
 		}
 		if (!check_merge_symbol(ret)) {
@@ -209,7 +243,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 		}
 		new_global_scope->Add(ret.front().first->second);
 	}
-	if (is_debugging) {
+	if (CompilationContext::GetInstance()->Debug) {
 		::std::cout << "new global symbols:\n";
 		symbol_map_t* sym_map = new_global_scope->GetSymbolTable();
 		{
@@ -226,27 +260,46 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 			}
 		}
 	}
-	for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE =
-			ilprograms.end(); i != iE; ++i) {
-		fix_ilprogram_il_symref(*i, new_global_scope);
-	}
+	ILProgram* new_ilprogram = new ILProgram();
+	new_ilprogram->Scope = new_global_scope;
+	ILClass* new_ilclass = new ILClass(new_ilprogram,
+			new Symbol("Program", new VoidType()));
+	new_ilprogram->Claases.push_back(new_ilclass);
+	new_ilclass->Functions = new_global_functions;
+	return new_ilprogram;
 }
 
 int main(int argc, char **argv) {
+	CompilationContext *context = CompilationContext::GetInstance();
+
+// context->TextStart =  0x400000000;
+// context->DataStart =  0x400004000;
+// context->RDataStart = 0x400008000;
+// Use macros from the sys_config.h
+	context->TextStart = I0_CODE_BEGIN;
+	context->DataStart = I0_CODE_BEGIN + 0x4000;
+	context->RDataStart = I0_CODE_BEGIN + 0x8000;
+
+//NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
+// context->BssStart =   0x440000000;
+	context->BssStart = AMR_OFFSET_BEGIN;
+
+// NOTE: default targe code type
+// Only CODE_TYPE_I0 is supported
+	CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
 	::std::vector<const char*> cc0_obj_files;
-	const char* cc0_output_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
-				cc0_output_file = argv[++i];
+				CompilationContext::GetInstance()->OutputFile = argv[++i];
 			} else {
 				std::cerr << "invalid argument!\n";
 				return -1;
 			}
 		} else if ((strcmp(argv[i], "--debug") == 0)
 				|| (strcmp(argv[i], "-g") == 0)) {
-			is_debugging = true;
+			CompilationContext::GetInstance()->Debug = true;
 		} else {
 			cc0_obj_files.push_back(argv[i]);
 		}
@@ -256,8 +309,8 @@ int main(int argc, char **argv) {
 		std::cerr << "no obj input applied\n";
 		return 1;
 	}
-	if (cc0_output_file == NULL) {
-		cc0_output_file = "a.bin";
+	if (!CompilationContext::GetInstance()->OutputFile.size()) {
+		CompilationContext::GetInstance()->OutputFile = "a.bin";
 	}
 
 	::std::vector<CC0Obj> objfiles;
@@ -268,7 +321,91 @@ int main(int argc, char **argv) {
 			objfiles.end(); i != iE; ++i) {
 		ilprograms.push_back(i->second);
 	}
-	merge(ilprograms);
-	return 0;
+	ILProgram* new_il = merge(ilprograms);
 
+	context->IL = new_il;
+	SymbolScope::__SetRootScopt(new_il);
+
+	if (CompilationContext::GetInstance()->Debug) {
+		std::ofstream ildump("debug.ildump");
+		for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(),
+				citE = new_il->Claases.end(); cit != citE; ++cit) {
+			ILClass *c = *cit;
+
+			ildump << "class " << c->ClassSymbol->Name << std::endl << "{"
+					<< std::endl;
+
+			for (std::vector<ILFunction *>::iterator fit = c->Functions.begin();
+					fit != c->Functions.end(); ++fit) {
+				ILFunction *f = *fit;
+				ildump << "    function " << f->FunctionSymbol->Name
+						<< std::endl << "    {" << std::endl;
+				for (std::vector<IL>::iterator iit = f->Body.begin();
+						iit != f->Body.end(); ++iit) {
+					IL &il = *iit;
+					if (il.Opcode == IL::Label) {
+						ildump << "        " << il.ToString() << std::endl;
+					} else {
+						ildump << "            " << il.ToString() << std::endl;
+					}
+				}
+				ildump << "    }" << std::endl;
+			}
+			ildump << "}" << std::endl;
+		}
+
+		ildump.close();
+	}
+	CodeGenerator* codegen = new I0CodeGenerator();
+	codegen->Generate(context->IL);
+
+	if (CompilationContext::GetInstance()->Debug) {
+		std::string dumpFileName, mapFileName;
+		dumpFileName = "debug.objdump";
+		mapFileName = "debug.map";
+
+		std::ofstream objdump(dumpFileName.c_str());
+		int64_t currentText = context->TextStart;
+		for (std::vector<TargetInstruction *>::iterator iit =
+				context->Target->Code.begin();
+				iit != context->Target->Code.end(); ++iit) {
+			TargetInstruction *inst = *iit;
+			char buffer[32];
+			sprintf(buffer, "%0llX> \t", (long long) currentText);
+			objdump << buffer << inst->ToString().c_str() << std::endl;
+			currentText += inst->GetLength();
+		}
+
+		std::ofstream mapdump(mapFileName.c_str());
+		DumpScope(SymbolScope::GetRootScope(), mapdump);
+	}
+	printf("Maximum stack frame size: 0x%llX\n",
+			(long long) (context->MaxStackFrame));
+
+	char *textBuf = new char[0x100000];
+	int64_t textSize = 0;
+	for (std::vector<TargetInstruction *>::iterator it =
+			context->Target->Code.begin(); it != context->Target->Code.end();
+			++it) {
+		TargetInstruction *inst = *it;
+		inst->Encode(&textBuf[textSize]);
+		textSize += inst->GetLength();
+	}
+
+	// Write the binary into file
+	std::string outputFile = CompilationContext::GetInstance()->OutputFile;
+	BinaryWriter *binwt = new FlatFileWriter();
+
+	std::vector<SectionInfo> sections;
+	SectionInfo textSection;
+	textSection.Name = ".text";
+	textSection.RawData = textBuf;
+	textSection.RawDataSize = textSize;
+	textSection.VirtualBase = context->TextStart;
+	textSection.VirtualSize = textSize;
+	sections.push_back(textSection);
+
+	binwt->WriteBinaryFile(context->OutputFile, &sections, context->TextStart);
+
+	return 0;
 }
