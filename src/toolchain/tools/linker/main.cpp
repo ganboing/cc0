@@ -145,6 +145,7 @@ bool check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 
 	Symbol* pFirstSym = list.front().first->second;
 	Type* pFirstTy = pFirstSym->DeclType;
+	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
 	if (dynamic_cast<FunctionType*>(pFirstTy)) {
 		return true;
 	}
@@ -158,6 +159,12 @@ bool check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 		Type* pTy = pSym->DeclType;
 		if (!pFirstTy->Equals(pTy)) {
 			::std::cerr << pSym->Name << " symbol type disagree!\n";
+			return false;
+		}
+		Type::TypeSpecifier Spec = pTy->GetSpecifiers();
+		if(FirstSpec != Spec)
+		{
+			::std::cerr << pSym->Name << " symbol type specifiers disagree!\n";
 			return false;
 		}
 	}
@@ -239,7 +246,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 			::std::cout << "----------\n";
 		}
 		if (!check_merge_symbol(ret)) {
-			throw int(-1);
+			exit(-1);
 		}
 		new_global_scope->Add(ret.front().first->second);
 	}
