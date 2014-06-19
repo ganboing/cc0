@@ -247,4 +247,6 @@ void SymbolScope::SetAssociatedExpression(Expression* expr)
     _expression = expr;
 }
 
-
+void SymbolScope::__SetParentScope(SymbolScope* __parent){
+	_parentScope = __parent;
+}

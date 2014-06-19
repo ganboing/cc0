@@ -16,7 +16,6 @@ class ILProgram;
 class SymbolScope
 {
 private:
-	friend ILProgram* merge(::std::vector<ILProgram*> ilprograms);
 	SymbolScope();
 	friend class ::boost::serialization::access;
 	template<class A>
@@ -57,6 +56,7 @@ public:
     SymbolScope(SymbolScope *parentScope, ScopeKind kind, Expression *associatedExpression);
     virtual ~SymbolScope();
 public:
+    void __SetParentScope(SymbolScope*);
     int64_t GetMemorySize();
     SymbolScope *GetParentScope();
     std::vector<SymbolScope *> *GetChildScopes();

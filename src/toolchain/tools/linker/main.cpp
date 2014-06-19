@@ -37,8 +37,7 @@
 
 namespace {
 template<class Container>
-class TagIterator: public ::std::pair<typename Container::const_iterator,
-		const Container*> {
+class TagIterator: public ::std::pair<typename Container::const_iterator, const Container*> {
 private:
 	TagIterator();
 public:
@@ -63,13 +62,9 @@ public:
 };
 
 template<class Container>
-class TagItPool: public ::std::priority_queue<TagIterator<Container>,
-		::std::vector<TagIterator<Container> >,
-		::std::greater<TagIterator<Container> > > {
+class TagItPool: public ::std::priority_queue<TagIterator<Container>, ::std::vector<TagIterator<Container> >, ::std::greater<TagIterator<Container> > > {
 public:
-	typedef ::std::priority_queue<TagIterator<Container>,
-			::std::vector<TagIterator<Container> >,
-			::std::greater<TagIterator<Container> > > _parent_type;
+	typedef ::std::priority_queue<TagIterator<Container>, ::std::vector<TagIterator<Container> >, ::std::greater<TagIterator<Container> > > _parent_type;
 	typedef typename _parent_type::value_type value_type;
 	typedef typename _parent_type::size_type size_type;
 	void push(const value_type& tagit) {
@@ -105,29 +100,29 @@ typedef TagItPool<symbol_map_t> sym_tagit_pool_t;
 typedef ::std::set< ::std::string> realloc_record_t;
 typedef ::std::map<SymbolScope*, realloc_record_t> realloc_map_t;
 typedef ::std::list<sym_tagit_t> sym_merge_list_t;
-typedef ::std::set<SymbolScope*> scope_set_t;
-typedef ::std::vector<SymbolScope*> scope_vec_t;
+typedef ::std::map< ::std::string, ILFunction*> il_func_map_t;
 
 }
+
+/*template<class Key, class T, class Map = ::std::map<Key, T>, class Set = ::std::set<Key> >
+ void remove_duplicate_symbol(Map& sym_map, const Set& sym_set) {
+ for (Set::const_iterator i = sym_set.begin(), iE = sym_set.end(); i != iE; ++i) {
+ sym_map.erase(*i);
+ }
+ }*/
 
 void DumpScope(SymbolScope *scope, std::ofstream &dump) {
 	char buffer[100];
 
-	for (std::map<std::string, Symbol *>::iterator it =
-			scope->GetSymbolTable()->begin();
-			it != scope->GetSymbolTable()->end(); ++it) {
+	for (std::map<std::string, Symbol *>::iterator it = scope->GetSymbolTable()->begin(); it != scope->GetSymbolTable()->end(); ++it) {
 		Symbol *symbol = it->second;
-		if (typeid(*(symbol->DeclType)) == typeid(FunctionType)
-				|| scope->GetScopeKind() == SymbolScope::Global) {
-			sprintf(buffer, "%0llX\t%s", (long long) symbol->Address,
-					symbol->Name.c_str());
+		if (typeid(*(symbol->DeclType)) == typeid(FunctionType) || scope->GetScopeKind() == SymbolScope::Global) {
+			sprintf(buffer, "%0llX\t%s", (long long) symbol->Address, symbol->Name.c_str());
 			dump << buffer << std::endl;
 		}
 	}
 
-	for (std::vector<SymbolScope *>::iterator it =
-			scope->GetChildScopes()->begin();
-			it != scope->GetChildScopes()->end(); ++it) {
+	for (std::vector<SymbolScope *>::iterator it = scope->GetChildScopes()->begin(); it != scope->GetChildScopes()->end(); ++it) {
 		SymbolScope *cs = *it;
 		DumpScope(cs, dump);
 	}
@@ -141,138 +136,221 @@ CC0Obj load_file_context(const char* file) {
 	return obj;
 }
 
-bool check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
+void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 
 	Symbol* pFirstSym = list.front().first->second;
 	Type* pFirstTy = pFirstSym->DeclType;
 	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
 	if (dynamic_cast<FunctionType*>(pFirstTy)) {
-		return true;
+		for(::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE=list.end();i!=iE;++i)
+		{
+			Symbol* pSym=i->first->second;
+			Type* pTy = pSym->DeclType;
+			if(dynamic_cast<FunctionType*>(pTy)==NULL)
+			{
+
+			}
+		}
+		if (list.size() > 1) {
+			::std::cerr << pFirstSym->Name << " global function possibly redefined!\n";
+			throw ::std::runtime_error("[LINK]: global function possibly redefined!\n");
+		}
+		return;
 	}
-	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE =
-			list.end(); i != iE; ++i) {
+	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE = list.end(); i != iE; ++i) {
 		Symbol* pSym = i->first->second;
 		if (pSym->Kind != Symbol::ObjectName) {
-			::std::cerr << pSym->Name << " symbol kind disagree!\n";
-			return false;
+			::std::cerr << pSym->Name << " symbol kind mismatch!\n";
+			throw ::std::runtime_error("[LINK]: symbol kind mismatch!\n");
 		}
 		Type* pTy = pSym->DeclType;
 		if (!pFirstTy->Equals(pTy)) {
-			::std::cerr << pSym->Name << " symbol type disagree!\n";
-			return false;
+			::std::cerr << pSym->Name << " symbol type mismatch!\n";
+			throw ::std::runtime_error("[LINK]: symbol type mismatch!\n");
 		}
 		Type::TypeSpecifier Spec = pTy->GetSpecifiers();
-		if(FirstSpec != Spec)
-		{
-			::std::cerr << pSym->Name << " symbol type specifiers disagree!\n";
-			return false;
+		if (FirstSpec != Spec) {
+			::std::cerr << pSym->Name << " symbol type specifiers mismatch!\n";
+			throw ::std::runtime_error("[LINK]: symbol type specifiers mismatch!\n");
 		}
 	}
-	return true;
 }
 
-void fix_ilprogram_il_symref(ILProgram* ilprogram, SymbolScope* new_global) {
-	SymbolScope* old_global = ilprogram->Scope;
-	for (::std::vector<ILClass*>::iterator i = ilprogram->Claases.begin(), iE =
-			ilprogram->Claases.end(); i != iE; ++i) {
-		for (::std::vector<ILFunction *>::iterator j = (*i)->Functions.begin(),
-				jE = (*i)->Functions.end(); j != jE; ++j) {
-			assert((*j)->FunctionSymbol->Scope == old_global);
-			(*j)->FunctionSymbol->Scope = new_global;
-			for (::std::vector<IL>::iterator k = (*j)->Body.begin(), kE =
-					(*j)->Body.end(); k != kE; ++k) {
-				for (::std::vector<IL::ILOperand>::iterator p =
-						(*k).Operands.begin(), pE = (*k).Operands.end();
-						p != pE; ++p) {
-					if ((*p).OperandKind == IL::Variable) {
-						if ((*p).SymRef->Scope == old_global) {
-							(*p).SymRef->Scope = new_global;
-						}
+void ilprogram_symref_fixup(ILProgram* ilprogram) {
+	SymbolScope* new_global_scope = ilprogram->Scope;
+	symbol_map_t& new_sym_map = *ilprogram->Scope->GetSymbolTable();
+	ILClass& ilclass = *ilprogram->Claases[0];
+
+	//fix global symbol scope refs
+	for (::std::vector<ILFunction *>::iterator i = ilclass.Functions.begin(), iE = ilclass.Functions.end(); i != iE; ++i) {
+		SymbolScope* old_global_scope = (*i)->FunctionSymbol->Scope;
+		for (::std::vector<IL>::iterator j = (*i)->Body.begin(), jE = (*i)->Body.end(); j != jE; ++j) {
+			for (::std::vector<IL::ILOperand>::iterator p = j->Operands.begin(), pE = j->Operands.end(); p != pE; ++p) {
+				if (p->OperandKind == IL::Variable) {
+					if (p->SymRef->Scope == old_global_scope) {
+						p->SymRef->Scope = new_global_scope;
 					}
 				}
 			}
 		}
 	}
+
+	//fix global symbol symbols parent refs (Symbol::Scope)
+	for (symbol_map_t::iterator i = new_sym_map.begin(), iE = new_sym_map.end(); i != iE; ++i) {
+		i->second->Scope = new_global_scope;
+	}
+}
+
+void purge_program(ILProgram* ilprogram) {
+	//build function map
+	il_func_map_t func_map;
+	symbol_map_t purged_map;
+	::std::vector<ILFunction*> purged_funcs;
+	::std::vector<SymbolScope*> purged_func_scopes;
+	symbol_map_t& orig_map = *ilprogram->Scope->GetSymbolTable();
+	::std::vector<ILFunction*>& orig_funcs = ilprogram->Claases[0]->Functions;
+	::std::vector<SymbolScope*>& orig_func_scopes = *ilprogram->Scope->GetChildScopes();
+
+	//construct the string -> ILFunction* map
+	for (::std::vector<ILFunction*>::const_iterator i = orig_funcs.begin(), iE = orig_funcs.end(); i != iE; ++i) {
+		func_map.insert(::std::make_pair((*i)->FunctionSymbol->Name, *i));
+	}
+
+	//add the root dependency "main" function
+	::std::queue<ILFunction*> func_dep_queue;
+	{
+		il_func_map_t::iterator i = func_map.find("main");
+		if (i == func_map.end()) {
+			throw ::std::runtime_error("[LINK]: main function not find!\n");
+		}
+		func_dep_queue.push(i->second);
+	}
+
+	//iterator over the dependency tree
+	while (!func_dep_queue.empty()) {
+		ILFunction* requested_func = func_dep_queue.front();
+		if (CompilationContext::GetInstance()->Debug) {
+			::std::cout << "[LINK]: Dep: " << requested_func->FunctionSymbol->Name << "\n";
+		}
+		symbol_map_t::iterator i = purged_map.find(requested_func->FunctionSymbol->Name);
+		if (i == purged_map.end()) {
+
+			//move the function Symbol to new map
+			{
+				purged_funcs.push_back(requested_func);
+				purged_func_scopes.push_back(requested_func->Scope);
+				//XXX: assuming all children scopes are function scope
+				const ::std::string& func_name = requested_func->FunctionSymbol->Name;
+				purged_map[func_name] = orig_map[func_name];
+				orig_map.erase(func_name);
+			}
+
+			//collect dependencies
+			::std::vector<IL>& ilcodes = requested_func->Body;
+			for (::std::vector<IL>::iterator j = ilcodes.begin(), jE = ilcodes.end(); j != jE; ++j) {
+				for (::std::vector<IL::ILOperand>::iterator k = j->Operands.begin(), kE = j->Operands.end(); k != kE; ++k) {
+					if (k->OperandKind == IL::Variable) {
+						if (k->SymRef->Scope == ilprogram->Scope) {
+							symbol_map_t::iterator p = purged_map.find(k->SymRef->Name);
+							if (p == purged_map.end()) {
+								il_func_map_t::iterator r = func_map.find(k->SymRef->Name);
+								if (r != func_map.end()) {
+									func_dep_queue.push(r->second);
+								} else {
+									purged_map[k->SymRef->Name] = orig_map[k->SymRef->Name];
+									orig_map.erase(k->SymRef->Name);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		func_dep_queue.pop();
+	}
+
+	if (CompilationContext::GetInstance()->Debug) {
+		for (symbol_map_t::iterator i = orig_map.begin(), iE = orig_map.end(); i != iE; ++i) {
+			::std::cout << "[LINK]: purged sym: " << i->first << "\n";
+		}
+	}
+
+	//fixup ilprogram
+	orig_map = purged_map;
+	orig_func_scopes = purged_func_scopes;
+	orig_funcs = purged_funcs;
+
 }
 
 ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
+	ILProgram* new_ilprogram = new ILProgram();
 	realloc_map_t realloc_map;
 	sym_tagit_pool_t pool;
-	scope_set_t global_scope_set;
-	SymbolScope* new_global_scope = new SymbolScope(NULL, SymbolScope::Global,
-	NULL);
-	scope_vec_t* new_sub_scopes = new_global_scope->GetChildScopes();
-	for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE =
-			ilprograms.end(); i != iE; ++i) {
-		fix_ilprogram_il_symref(*i, new_global_scope);
-	}
-	for (scope_vec_t::iterator i = new_sub_scopes->begin(), iE =
-			new_sub_scopes->end(); i != iE; ++i) {
-		(*i)->_parentScope = new_global_scope;
-	}
-	::std::vector<ILFunction*> new_global_functions;
-	for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE =
-			ilprograms.end(); i != iE; ++i) {
-		SymbolScope* sym_scope = (*i)->Scope;
-		global_scope_set.insert(sym_scope);
-		symbol_map_t& sym_tab = sym_scope->_symbolTable;
-		pool.push(sym_tagit_t(&sym_tab));
-		new_sub_scopes->insert(new_sub_scopes->end(),
-				sym_scope->GetChildScopes()->begin(),
-				sym_scope->GetChildScopes()->end());
-		for (::std::vector<ILClass*>::iterator j = (*i)->Claases.begin(), jE =
-				(*i)->Claases.end(); j != jE; ++j) {
-			new_global_functions.insert(new_global_functions.end(),
-					(*j)->Functions.begin(), (*j)->Functions.end());
-		}
-	}
-	if (CompilationContext::GetInstance()->Debug) {
-		::std::cout << "----------\n";
-	}
-	while (!pool.empty()) {
-		sym_merge_list_t ret(pool.next());
-		for (sym_merge_list_t::iterator i = ret.begin(), iE = ret.end();
-				i != iE; ++i) {
-			/*const symbol_map_t* map_in_scope = i->second;
-			 const ::std::string& symbol_in_tab = i->first->first;
-			 realloc_map[container_of(map_in_scope, SymbolScope, _symbolTable)].insert(symbol_in_tab);*/
-			if (CompilationContext::GetInstance()->Debug) {
-				std::cout << i->first->first << " with symbol == "
-						<< i->first->second << " on scope " << i->second
-						<< "\n";
+	new_ilprogram->Scope = new SymbolScope(NULL, SymbolScope::Global, NULL);
+	SymbolScope& new_sym_scope = *new_ilprogram->Scope;
+	symbol_map_t& new_sym_map = *new_sym_scope.GetSymbolTable();
+	ILClass* new_ilclass = new ILClass(new_ilprogram, new Symbol("Program", new VoidType()));
+	new_ilprogram->Claases.push_back(new_ilclass);
+	::std::vector<SymbolScope*>& new_sub_scopes = *new_ilprogram->Scope->GetChildScopes();
+	::std::vector<ILFunction*>& new_global_functions = new_ilclass->Functions;
+
+	//append all children scopes and fix parent link
+	//append all global functions
+	{
+		for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE = ilprograms.end(); i != iE; ++i) {
+			SymbolScope* sym_scope = (*i)->Scope;
+			new_sub_scopes.insert(new_sub_scopes.end(), sym_scope->GetChildScopes()->begin(), sym_scope->GetChildScopes()->end());
+			for (::std::vector<ILClass*>::iterator j = (*i)->Claases.begin(), jE = (*i)->Claases.end(); j != jE; ++j) {
+				new_global_functions.insert(new_global_functions.end(), (*j)->Functions.begin(), (*j)->Functions.end());
 			}
 		}
+		for (::std::vector<SymbolScope*>::iterator i = new_sub_scopes.begin(), iE = new_sub_scopes.end(); i != iE; ++i) {
+			(*i)->__SetParentScope(new_ilprogram->Scope);
+		}
+	}
+
+	//merge symbols in global
+	{
+		for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE = ilprograms.end(); i != iE; ++i) {
+			pool.push(sym_tagit_t((*i)->Scope->GetSymbolTable()));
+		}
+
 		if (CompilationContext::GetInstance()->Debug) {
 			::std::cout << "----------\n";
 		}
-		if (!check_merge_symbol(ret)) {
-			exit(-1);
+		while (!pool.empty()) {
+			sym_merge_list_t ret(pool.next());
+			if (CompilationContext::GetInstance()->Debug) {
+				for (sym_merge_list_t::iterator i = ret.begin(), iE = ret.end(); i != iE; ++i) {
+					std::cout << i->first->first << " with symbol == " << i->first->second << " on scope " << i->second << "\n";
+				}
+				::std::cout << "----------\n";
+			}
+			check_merge_symbol(ret);
+			new_sym_map.insert(*ret.front().first);
 		}
-		new_global_scope->Add(ret.front().first->second);
-	}
-	if (CompilationContext::GetInstance()->Debug) {
-		::std::cout << "new global symbols:\n";
-		symbol_map_t* sym_map = new_global_scope->GetSymbolTable();
-		{
-			symbol_map_t::iterator i = sym_map->begin(), iE = sym_map->end();
-			while (1) {
-				const ::std::string sym = i->first;
-				++i;
-				if (i != iE) {
-					::std::cout << "├─" << sym << "\n";
-				} else {
-					::std::cout << "└─" << sym << "\n";
-					break;
+		if (CompilationContext::GetInstance()->Debug) {
+			::std::cout << "new global symbols:\n";
+			{
+				symbol_map_t::iterator i = new_sym_map.begin(), iE = new_sym_map.end();
+				while (1) {
+					const ::std::string& sym = i->first;
+					++i;
+					if (i != iE) {
+						::std::cout << "├─" << sym << "\n";
+					} else {
+						::std::cout << "└─" << sym << "\n";
+						break;
+					}
 				}
 			}
 		}
 	}
-	ILProgram* new_ilprogram = new ILProgram();
-	new_ilprogram->Scope = new_global_scope;
-	ILClass* new_ilclass = new ILClass(new_ilprogram,
-			new Symbol("Program", new VoidType()));
-	new_ilprogram->Claases.push_back(new_ilclass);
-	new_ilclass->Functions = new_global_functions;
+
+	ilprogram_symref_fixup(new_ilprogram);
+
+	purge_program(new_ilprogram);
+
 	return new_ilprogram;
 }
 
@@ -304,8 +382,7 @@ int main(int argc, char **argv) {
 				std::cerr << "invalid argument!\n";
 				return -1;
 			}
-		} else if ((strcmp(argv[i], "--debug") == 0)
-				|| (strcmp(argv[i], "-g") == 0)) {
+		} else if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0)) {
 			CompilationContext::GetInstance()->Debug = true;
 		} else {
 			cc0_obj_files.push_back(argv[i]);
@@ -321,11 +398,9 @@ int main(int argc, char **argv) {
 	}
 
 	::std::vector<CC0Obj> objfiles;
-	::std::transform(cc0_obj_files.begin(), cc0_obj_files.end(),
-			::std::back_inserter(objfiles), load_file_context);
+	::std::transform(cc0_obj_files.begin(), cc0_obj_files.end(), ::std::back_inserter(objfiles), load_file_context);
 	::std::vector<ILProgram*> ilprograms;
-	for (::std::vector<CC0Obj>::iterator i = objfiles.begin(), iE =
-			objfiles.end(); i != iE; ++i) {
+	for (::std::vector<CC0Obj>::iterator i = objfiles.begin(), iE = objfiles.end(); i != iE; ++i) {
 		ilprograms.push_back(i->second);
 	}
 	ILProgram* new_il = merge(ilprograms);
@@ -335,20 +410,15 @@ int main(int argc, char **argv) {
 
 	if (CompilationContext::GetInstance()->Debug) {
 		std::ofstream ildump("debug.ildump");
-		for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(),
-				citE = new_il->Claases.end(); cit != citE; ++cit) {
+		for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(), citE = new_il->Claases.end(); cit != citE; ++cit) {
 			ILClass *c = *cit;
 
-			ildump << "class " << c->ClassSymbol->Name << std::endl << "{"
-					<< std::endl;
+			ildump << "class " << c->ClassSymbol->Name << std::endl << "{" << std::endl;
 
-			for (std::vector<ILFunction *>::iterator fit = c->Functions.begin();
-					fit != c->Functions.end(); ++fit) {
+			for (std::vector<ILFunction *>::iterator fit = c->Functions.begin(); fit != c->Functions.end(); ++fit) {
 				ILFunction *f = *fit;
-				ildump << "    function " << f->FunctionSymbol->Name
-						<< std::endl << "    {" << std::endl;
-				for (std::vector<IL>::iterator iit = f->Body.begin();
-						iit != f->Body.end(); ++iit) {
+				ildump << "    function " << f->FunctionSymbol->Name << std::endl << "    {" << std::endl;
+				for (std::vector<IL>::iterator iit = f->Body.begin(); iit != f->Body.end(); ++iit) {
 					IL &il = *iit;
 					if (il.Opcode == IL::Label) {
 						ildump << "        " << il.ToString() << std::endl;
@@ -373,9 +443,7 @@ int main(int argc, char **argv) {
 
 		std::ofstream objdump(dumpFileName.c_str());
 		int64_t currentText = context->TextStart;
-		for (std::vector<TargetInstruction *>::iterator iit =
-				context->Target->Code.begin();
-				iit != context->Target->Code.end(); ++iit) {
+		for (std::vector<TargetInstruction *>::iterator iit = context->Target->Code.begin(); iit != context->Target->Code.end(); ++iit) {
 			TargetInstruction *inst = *iit;
 			char buffer[32];
 			sprintf(buffer, "%0llX> \t", (long long) currentText);
@@ -386,14 +454,11 @@ int main(int argc, char **argv) {
 		std::ofstream mapdump(mapFileName.c_str());
 		DumpScope(SymbolScope::GetRootScope(), mapdump);
 	}
-	printf("Maximum stack frame size: 0x%llX\n",
-			(long long) (context->MaxStackFrame));
+	printf("Maximum stack frame size: 0x%llX\n", (long long) (context->MaxStackFrame));
 
 	char *textBuf = new char[0x100000];
 	int64_t textSize = 0;
-	for (std::vector<TargetInstruction *>::iterator it =
-			context->Target->Code.begin(); it != context->Target->Code.end();
-			++it) {
+	for (std::vector<TargetInstruction *>::iterator it = context->Target->Code.begin(); it != context->Target->Code.end(); ++it) {
 		TargetInstruction *inst = *it;
 		inst->Encode(&textBuf[textSize]);
 		textSize += inst->GetLength();
