@@ -142,19 +142,6 @@ void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 	Type* pFirstTy = pFirstSym->DeclType;
 	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
 	if (dynamic_cast<FunctionType*>(pFirstTy)) {
-		for(::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE=list.end();i!=iE;++i)
-		{
-			Symbol* pSym=i->first->second;
-			Type* pTy = pSym->DeclType;
-			if(dynamic_cast<FunctionType*>(pTy)==NULL)
-			{
-
-			}
-		}
-		if (list.size() > 1) {
-			::std::cerr << pFirstSym->Name << " global function possibly redefined!\n";
-			throw ::std::runtime_error("[LINK]: global function possibly redefined!\n");
-		}
 		return;
 	}
 	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE = list.end(); i != iE; ++i) {
@@ -229,10 +216,11 @@ void purge_program(ILProgram* ilprogram) {
 	//iterator over the dependency tree
 	while (!func_dep_queue.empty()) {
 		ILFunction* requested_func = func_dep_queue.front();
+		::std::string& func_name = requested_func->FunctionSymbol->Name;
 		if (CompilationContext::GetInstance()->Debug) {
-			::std::cout << "[LINK]: Dep: " << requested_func->FunctionSymbol->Name << "\n";
+			::std::cout << "[LINK]: Dep: " << func_name << "\n";
 		}
-		symbol_map_t::iterator i = purged_map.find(requested_func->FunctionSymbol->Name);
+		symbol_map_t::iterator i = purged_map.find(func_name);
 		if (i == purged_map.end()) {
 
 			//move the function Symbol to new map
@@ -240,7 +228,6 @@ void purge_program(ILProgram* ilprogram) {
 				purged_funcs.push_back(requested_func);
 				purged_func_scopes.push_back(requested_func->Scope);
 				//XXX: assuming all children scopes are function scope
-				const ::std::string& func_name = requested_func->FunctionSymbol->Name;
 				purged_map[func_name] = orig_map[func_name];
 				orig_map.erase(func_name);
 			}
@@ -297,11 +284,18 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 	//append all children scopes and fix parent link
 	//append all global functions
 	{
+		::std::set< ::std::string> func_names;
 		for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE = ilprograms.end(); i != iE; ++i) {
 			SymbolScope* sym_scope = (*i)->Scope;
 			new_sub_scopes.insert(new_sub_scopes.end(), sym_scope->GetChildScopes()->begin(), sym_scope->GetChildScopes()->end());
-			for (::std::vector<ILClass*>::iterator j = (*i)->Claases.begin(), jE = (*i)->Claases.end(); j != jE; ++j) {
-				new_global_functions.insert(new_global_functions.end(), (*j)->Functions.begin(), (*j)->Functions.end());
+			::std::vector<ILFunction*>& funcs = (*i)->Claases[0]->Functions;
+			for (::std::vector<ILFunction*>::iterator i = funcs.begin(), iE = funcs.end(); i != iE; ++i) {
+				::std::string& func_name = (*i)->FunctionSymbol->Name;
+				if (func_names.find(func_name) != func_names.end()) {
+					throw ::std::runtime_error("[LINK]: function possibly redefined!\n");
+				}
+				func_names.insert(func_name);
+				new_global_functions.push_back(*i);
 			}
 		}
 		for (::std::vector<SymbolScope*>::iterator i = new_sub_scopes.begin(), iE = new_sub_scopes.end(); i != iE; ++i) {
