@@ -4,7 +4,9 @@
 #include <assert.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <map>
+#include <ctime>
 #include <boost/filesystem/path.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 
@@ -124,9 +126,9 @@ int main(int argc, char **argv)
         std::string fileExt = ::boost::filesystem::path(::boost::filesystem::path(inputFile).extension()).string();
         if(fileExt == ".c" || fileExt == ".c0")
         {
-        	std::string tmpFileName = inputFile + ".tmp";
-
-            // tmpnam(tmpFileName);
+        	::std::stringstream tmpFileName_impl;
+        	tmpFileName_impl << "/tmp/cc0_cpp_" << getpid() << "_"<<time(NULL);
+        	::std::string tmpFileName(tmpFileName_impl.str());
             std::cout<< "temp file is: " << tmpFileName << "\n";
 
             context->CurrentFileName = inputFile;

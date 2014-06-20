@@ -141,9 +141,7 @@ void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 	Symbol* pFirstSym = list.front().first->second;
 	Type* pFirstTy = pFirstSym->DeclType;
 	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
-	if (dynamic_cast<FunctionType*>(pFirstTy)) {
-		return;
-	}
+	assert (dynamic_cast<FunctionType*>(pFirstTy) == NULL);
 	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE = list.end(); i != iE; ++i) {
 		Symbol* pSym = i->first->second;
 		if (pSym->Kind != Symbol::ObjectName) {
@@ -176,6 +174,10 @@ void ilprogram_symref_fixup(ILProgram* ilprogram) {
 				if (p->OperandKind == IL::Variable) {
 					if (p->SymRef->Scope == old_global_scope) {
 						p->SymRef->Scope = new_global_scope;
+						if(CompilationContext::GetInstance()->Debug)
+						{
+							::std::cout << "[LINK]: relinked symbol " << p->SymRef->Name << " in function "<<(*i)->FunctionSymbol->Name << "\n";
+						}
 					}
 				}
 			}
@@ -185,6 +187,10 @@ void ilprogram_symref_fixup(ILProgram* ilprogram) {
 	//fix global symbol symbols parent refs (Symbol::Scope)
 	for (symbol_map_t::iterator i = new_sym_map.begin(), iE = new_sym_map.end(); i != iE; ++i) {
 		i->second->Scope = new_global_scope;
+		if(CompilationContext::GetInstance()->Debug)
+		{
+			::std::cout<<"[LINK]: fixed " << i->second->Name << "\n";
+		}
 	}
 }
 
@@ -282,19 +288,19 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 	::std::vector<ILFunction*>& new_global_functions = new_ilclass->Functions;
 
 	//append all children scopes and fix parent link
-	//append all global functions
+	//append all global functions and insert the definition (important!) Symbol* to symbol map
 	{
-		::std::set< ::std::string> func_names;
 		for (::std::vector<ILProgram*>::iterator i = ilprograms.begin(), iE = ilprograms.end(); i != iE; ++i) {
-			SymbolScope* sym_scope = (*i)->Scope;
-			new_sub_scopes.insert(new_sub_scopes.end(), sym_scope->GetChildScopes()->begin(), sym_scope->GetChildScopes()->end());
+			SymbolScope& sym_scope = *((*i)->Scope);
+			symbol_map_t& sym_map = *sym_scope.GetSymbolTable();
+			new_sub_scopes.insert(new_sub_scopes.end(), sym_scope.GetChildScopes()->begin(), sym_scope.GetChildScopes()->end());
 			::std::vector<ILFunction*>& funcs = (*i)->Claases[0]->Functions;
 			for (::std::vector<ILFunction*>::iterator i = funcs.begin(), iE = funcs.end(); i != iE; ++i) {
 				::std::string& func_name = (*i)->FunctionSymbol->Name;
-				if (func_names.find(func_name) != func_names.end()) {
+				if (new_sym_map.find(func_name) != new_sym_map.end()) {
 					throw ::std::runtime_error("[LINK]: function possibly redefined!\n");
 				}
-				func_names.insert(func_name);
+				new_sym_map[func_name] = sym_map[func_name];
 				new_global_functions.push_back(*i);
 			}
 		}
@@ -318,10 +324,20 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 				for (sym_merge_list_t::iterator i = ret.begin(), iE = ret.end(); i != iE; ++i) {
 					std::cout << i->first->first << " with symbol == " << i->first->second << " on scope " << i->second << "\n";
 				}
+			}
+			if(new_sym_map.find(ret.front().first->first) == new_sym_map.end())
+			{
+				check_merge_symbol(ret);
+				new_sym_map.insert(*ret.front().first);
+			}
+			else
+			{
+				if(CompilationContext::GetInstance()->Debug)
+				{
+					::std::cout << ret.front().first->first << " already inserted\n";
+				}
 				::std::cout << "----------\n";
 			}
-			check_merge_symbol(ret);
-			new_sym_map.insert(*ret.front().first);
 		}
 		if (CompilationContext::GetInstance()->Debug) {
 			::std::cout << "new global symbols:\n";
@@ -343,7 +359,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 
 	ilprogram_symref_fixup(new_ilprogram);
 
-	purge_program(new_ilprogram);
+	//purge_program(new_ilprogram);
 
 	return new_ilprogram;
 }
