@@ -1,4 +1,4 @@
-#include "kmeans-common.h"
+#include "../kmeans_common/kmeans-common.h"
 
 void init_runner_pmem(long start, long end)
 {
