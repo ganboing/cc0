@@ -142,7 +142,11 @@ void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 	Symbol* pFirstSym = list.front().first->second;
 	Type* pFirstTy = pFirstSym->DeclType;
 	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
-	assert (dynamic_cast<FunctionType*>(pFirstTy) == NULL);
+	if(dynamic_cast<FunctionType*>(pFirstTy) )
+	{
+		::std::cerr <<  "[LINK]: function \""<< list.front().first->first<<  "\" might not be defined!\n";
+		throw ::std::runtime_error("function not found!\n");
+	}
 	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE = list.end(); i != iE; ++i) {
 		Symbol* pSym = i->first->second;
 		if (pSym->Kind != Symbol::ObjectName) {
