@@ -341,6 +341,9 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 				{
 					::std::cout << ret.front().first->first << " already inserted\n";
 				}
+			}
+			if(CompilationContext::GetInstance()->Debug)
+			{
 				::std::cout << "----------\n";
 			}
 		}
