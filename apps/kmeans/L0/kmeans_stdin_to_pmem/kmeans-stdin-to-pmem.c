@@ -1,6 +1,4 @@
-#define FROM_PMEM
-
-#include "kmeans-common.h"
+#include "../kmeans_common/kmeans-common.h"
 
 void shuffle_runner(long start, long end)
 {
