@@ -23,7 +23,7 @@
 #define PRINT_ITER
 
 // dataset size: choose only one
-#define TINY_EXP
+// #define TINY_EXP
 // #define SMALL_EXP
 // #define LARGE_EXP
 
