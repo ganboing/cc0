@@ -1,5 +1,3 @@
-#define FROM_PMEM
-
 #include "kmeans-common.h"
 
 void init_runner_pmem(long start, long end)
