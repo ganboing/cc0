@@ -367,7 +367,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 
 	ilprogram_symref_fixup(new_ilprogram);
 
-	//purge_program(new_ilprogram);
+	purge_program(new_ilprogram);
 
 	return new_ilprogram;
 }
