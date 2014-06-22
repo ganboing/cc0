@@ -14,27 +14,18 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
-#include <core/Core.h>
-#include <frontend/c/CSourceParser.h>
-// #include <backend/disa/DisaCodeGenerator.h>
-// #include <backend/disa/DisaAssemblyParser.h>
-#include <backend/i0/I0CodeGenerator.h>
-#include <binary/elf/ElfFileWriter.h>
-#include <binary/flat/FlatFileWriter.h>
-#include <core/Symbol/SymbolAddressAllocator.h>
+#include "core/Core.h"
+#include "frontend/c/CSourceParser.h"
+#include "backend/i0/I0CodeGenerator.h"
+#include "binary/flat/FlatFileWriter.h"
 #include "core/Symbol/SymbolScope.h"
-#include <core/Pass/ConstantPropagation.h>
-#include <core/Pass/TypeDeduction.h>
 #include "core/Serialization/ExportDeriveTypes.h"
 #include "core/Serialization/ExportDeriveExpressions.h"
 #include "core/Serialization/ObjFormat.h"
+#include "core/Misc/FilePath.h"
 
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
-
-#define container_of(ptr, type, member) ({                      \
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-        (type *)( (char *)__mptr - offsetof(type,member) );})
 
 namespace {
 template<class Container>
@@ -427,7 +418,7 @@ int main(int argc, char **argv) {
 	SymbolScope::__SetRootScopt(new_il);
 
 	if (CompilationContext::GetInstance()->Debug) {
-		std::ofstream ildump("debug.ildump");
+		std::ofstream ildump(ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".ildump").c_str());
 		for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(), citE = new_il->Claases.end(); cit != citE; ++cit) {
 			ILClass *c = *cit;
 
@@ -456,8 +447,8 @@ int main(int argc, char **argv) {
 
 	if (CompilationContext::GetInstance()->Debug) {
 		std::string dumpFileName, mapFileName;
-		dumpFileName = "debug.objdump";
-		mapFileName = "debug.map";
+		dumpFileName = ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".objdump");
+		mapFileName = ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".map");
 
 		std::ofstream objdump(dumpFileName.c_str());
 		int64_t currentText = context->TextStart;
