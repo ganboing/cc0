@@ -1,7 +1,5 @@
-#include <stdio.h>
-#include <getopt.h>
-#include <string.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <sstream>

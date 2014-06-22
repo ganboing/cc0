@@ -1,21 +1,15 @@
-#include <stdio.h>
-#include <getopt.h>
-#include <string.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstring>
+#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <set>
 #include <queue>
-#include <iterator>
 #include <algorithm>
-#include <boost/archive/xml_oarchive.hpp>
 #include <boost/archive/xml_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
 
 #include "core/Core.h"
-#include "frontend/c/CSourceParser.h"
 #include "backend/i0/I0CodeGenerator.h"
 #include "binary/flat/FlatFileWriter.h"
 #include "core/Symbol/SymbolScope.h"
