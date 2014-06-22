@@ -1,0 +1,295 @@
+// read input for pagerank from STDIN
+// http://snap.stanford.edu/data/soc-LiveJournal1.html
+
+// Usage:
+//     am run pagerank-stdin2pmem.bin soc-LiveJournal1.txt
+//
+// where pagerank-stdin2pmem.bin is the compiled binary of this program.
+// and soc-LiveJournal1.txt is the decpressed dataset downloaded from the
+// above link.
+
+// Written by Eric Z. Ma
+
+#include "libi0/stddef.h"
+#include "libi0/stdio.h"
+#include "libi0/malloc.h"
+
+#include "config.h"
+
+// edges
+long *pedges_cnt;
+long edges_cnt;
+long *edges;
+
+// vertices
+long *vertices;
+long *p_vertices_cnt;
+
+// in_neighbors
+long *in_neighbors;
+
+long pr_find_vertices_cnt()
+{
+    return edges[EDGE_SIZE * (edges_cnt-1)];
+}
+
+// represent graph as adjacency list
+void pr_build_graph()
+{
+    long cnt;
+    long i;
+
+    long src;
+    long dst;
+
+    long tmp1;
+    long tmp2;
+    long tmp3;
+    long tmp4;
+
+    long *filled;
+
+    // get vertices cnt
+    cnt = pr_find_vertices_cnt();
+#ifdef DEBUG_BUILDING
+    #PRINTSTR vertices_cnt:
+    putq(cnt); wrln();
+#endif
+    *p_vertices_cnt = cnt;
+
+    if (cnt <= 0) {
+        PRINTLN("It seems the input is not in persistent memory yet.");
+        abort;
+    }
+
+    // initialize
+    for (i = 0; i < cnt; i = i + 1) {
+        vertices[i*VERTEX_SIZE+VERTEX_OFFSET_INDEGREE] = 0;
+        vertices[i*VERTEX_SIZE+VERTEX_OFFSET_OUTDEGREE] = 0;
+        vertices[i*VERTEX_SIZE+VERTEX_OFFSET_IN_NEIGHBORS] = 0;
+    }
+#ifdef DEBUG_BUILDING
+    PRINTLN("init_v done.");
+#endif
+    // calculate degrees
+    for (i = 0; i < edges_cnt; i = i + 1) {
+        src = edges[i*EDGE_SIZE+EDGE_OFFSET_SRC];
+        dst = edges[i*EDGE_SIZE+EDGE_OFFSET_DST];
+        tmp1 = VERTEX_SIZE*src+VERTEX_OFFSET_OUTDEGREE;
+        vertices[tmp1] = vertices[tmp1] + 1;
+        tmp1 = VERTEX_SIZE*dst+VERTEX_OFFSET_INDEGREE;
+        vertices[tmp1] = vertices[tmp1] + 1;
+    }
+    // outdegree contains 1.0/outdegree as double
+    for (i = 0; i < cnt; i = i + 1) {
+        if (vertices[i*VERTEX_SIZE+VERTEX_OFFSET_OUTDEGREE] == 0) {
+            *(double*)&vertices[i*VERTEX_SIZE+VERTEX_OFFSET_OUTDEGREE] = 1.0;
+        } else {
+            *(double*)&vertices[i*VERTEX_SIZE+VERTEX_OFFSET_OUTDEGREE] =
+                1.0 / (double)vertices[i*VERTEX_SIZE+VERTEX_OFFSET_OUTDEGREE];
+        }
+    }
+
+#ifdef DEBUG_BUILDING
+    PRINTLN("degree done.");
+#endif
+    // build in_neighbors
+    // location
+    tmp1 = 0;
+    for (i = 0; i < cnt; i = i + 1) {
+        vertices[VERTEX_SIZE*i+VERTEX_OFFSET_IN_NEIGHBORS] = tmp1;
+#ifdef DEBUG_BUILDING
+        putq(i); putchar(':'); putq(vertices[VERTEX_SIZE*i+VERTEX_OFFSET_INDEGREE]); putchar(':'); putq(tmp1); wrln();
+#endif
+        tmp1 = tmp1 + vertices[VERTEX_SIZE*i+VERTEX_OFFSET_INDEGREE];
+    }
+#ifdef DEBUG_BUILDING
+    PRINTLN("in_neighbors location done.");
+#endif
+
+    filled = (long*)pralloc(cnt * sizeof_long);
+    for (i = 0; i < cnt; i = i + 1) {
+        filled[i] = 0;
+    }
+
+    // fill neighbors
+    // use the last in neighbors slots of vertices as temporary counters
+    for (i = 0; i < edges_cnt; i = i + 1) {
+        src = edges[i*EDGE_SIZE+EDGE_OFFSET_SRC];
+        dst = edges[i*EDGE_SIZE+EDGE_OFFSET_DST];
+        tmp1 = vertices[VERTEX_SIZE*dst+VERTEX_OFFSET_IN_NEIGHBORS];
+        tmp4 = filled[dst];
+        in_neighbors[tmp1 + tmp4] = src;
+        tmp4 = tmp4 + 1;
+        filled[dst] = tmp4;
+    }
+#ifdef DEBUG_BUILDING
+    PRINTLN("in_neighbors done.");
+#endif
+
+#ifdef DEBUG_BUILDING_RESULT
+    #PRINTSTR cnt:
+    putq(cnt); wrln();
+    // print in_neighbors
+    for (i = 0; i < cnt; i = i + 1) {
+        putq(i);
+#PRINTSTR <=|
+        output_double_binary(*(double*)&vertices[VERTEX_SIZE*i+VERTEX_OFFSET_OUTDEGREE]);
+        putchar('|');
+        tmp2 = vertices[VERTEX_SIZE*i+VERTEX_OFFSET_INDEGREE];
+        putq(tmp2); putchar('|');
+        tmp1 = vertices[VERTEX_SIZE*i+VERTEX_OFFSET_IN_NEIGHBORS];
+        putq(tmp1); putchar('='); putchar('>');
+        for (tmp3 = 0; tmp3 < tmp2; tmp3 = tmp3 + 1) {
+            putq(in_neighbors[tmp1 + tmp3]);
+            if (tmp3 != tmp2 - 1) putchar(',');
+        }
+        wrln();
+    }
+#endif
+
+    return;
+}
+
+void read_input()
+{
+    long src;
+    long dst;
+    long tmp;
+    long cnt;
+
+    // skip the headers
+    do {
+        tmp = input_long(&src);
+        // error, no input
+        if (tmp == -1) abort;
+    } while (src != 0);
+    tmp = input_long(&dst);
+    if (tmp == -1) abort;
+
+    cnt = 0;
+    do {
+        // store the edge read
+        edges[EDGE_SIZE*cnt+EDGE_OFFSET_SRC] = src;
+        edges[EDGE_SIZE*cnt+EDGE_OFFSET_DST] = dst;
+#ifdef DEBUG_READINPUT
+        putq(cnt); putchar(':');
+        putq(src); putchar(','); putq(dst); wrln();
+#endif
+        cnt = cnt + 1;
+        // try to read next edge
+        tmp = input_long(&src);
+        if (tmp != -1) tmp = input_long(&dst);
+    } while (tmp != -1);
+
+    edges_cnt = cnt;
+    // store the number of edges
+    *pedges_cnt = cnt;
+
+    return;
+}
+
+void shuffle(long id)
+{
+    long start, end, i;
+    long vstart, vend;
+
+    if (id == 3) {
+        start = 0;
+        end = IN_NEIGHBORS_MAX_LEN / 3 - N_LONG_PER_PAGE * 2;
+        vstart = 0;
+        vend = VERTICES_MAX_CNT * VERTEX_SIZE / 3 - N_LONG_PER_PAGE * 2;
+    } else if (id == 2) {
+        start = IN_NEIGHBORS_MAX_LEN / 3;
+        end = IN_NEIGHBORS_MAX_LEN * 2 / 3 - N_LONG_PER_PAGE * 2;
+        vstart = VERTICES_MAX_CNT * VERTEX_SIZE / 3;
+        vend = VERTICES_MAX_CNT * VERTEX_SIZE * 2 / 3 - N_LONG_PER_PAGE * 2;
+    } else {
+        start = IN_NEIGHBORS_MAX_LEN * 2 / 3;
+        end = IN_NEIGHBORS_MAX_LEN - 1;
+        vstart = VERTICES_MAX_CNT * VERTEX_SIZE * 2 / 3;
+        vend = VERTICES_MAX_CNT * VERTEX_SIZE - 1;
+    }
+
+    for (i = start; i < end; i = i + N_LONG_PER_PAGE) {
+        in_neighbors[i] = in_neighbors[i];
+    }
+
+    for (i = vstart; i < vend; i = i + N_LONG_PER_PAGE) {
+        vertices[i] = vertices[i];
+    }
+
+    commit;
+}
+
+void init()
+{
+    long space;
+
+    // edges address
+    pedges_cnt = (long*)EDGES_ADDRESS;
+    edges = (long*)(EDGES_ADDRESS + sizeof_long);
+
+    // initialize graph metadata address
+    p_vertices_cnt = (long*)VERTICES_ADDRESS;
+    vertices = (long*)(VERTICES_ADDRESS + sizeof_long);
+    in_neighbors = (long*)(IN_NEIGHBORS_ADDRESS);
+#ifdef DEBUG_BUILDING
+    PRINTLN("Start read edges.");
+#endif
+    read_input();
+#ifdef DEBUG_BUILDING
+    PRINTLN("Start build graph.");
+#endif
+    // process the graph
+    pr_build_graph();
+#ifdef DEBUG_BUILDING
+    PRINTLN("Finish build graph.");
+#endif
+
+    space = SPACE_START(0);
+    runner shuffle(0)
+        using
+        in_neighbors
+        , vertices
+        , ((long*)IN_NEIGHBORS_ADDRESS)[0,,IN_NEIGHBORS_MAX_LEN]
+        , ((long*)VERTICES_ADDRESS)[0,,(VERTICES_MAX_CNT * VERTEX_SIZE)]
+        in space;
+
+    space = SPACE_START(1);
+    runner shuffle(1)
+        using
+        in_neighbors
+        , vertices
+        , ((long*)IN_NEIGHBORS_ADDRESS)[0,,IN_NEIGHBORS_MAX_LEN]
+        , ((long*)VERTICES_ADDRESS)[0,,(VERTICES_MAX_CNT * VERTEX_SIZE)]
+        in space;
+
+    space = SPACE_START(2);
+    runner shuffle(2)
+        using
+        in_neighbors
+        , vertices
+        , ((long*)IN_NEIGHBORS_ADDRESS)[0,,IN_NEIGHBORS_MAX_LEN]
+        , ((long*)VERTICES_ADDRESS)[0,,(VERTICES_MAX_CNT * VERTEX_SIZE)]
+        in space;
+
+    commit;
+}
+
+void main()
+{
+    long space;
+
+    space = SPACE_START(0);
+
+    runner init()
+        using
+        edges, edges_cnt, pedges_cnt
+        , vertices, p_vertices_cnt, in_neighbors
+        , ((long*)EDGES_ADDRESS)[0,,EDGES_MAX_LEN]
+        , ((long*)VERTICES_ADDRESS)[0,,(VERTICES_MAX_CNT * VERTEX_SIZE)]
+        , ((long*)IN_NEIGHBORS_ADDRESS)[0,,IN_NEIGHBORS_MAX_LEN]
+        in space;
+    commit;
+}

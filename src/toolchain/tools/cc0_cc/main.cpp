@@ -18,10 +18,10 @@
 #include "../../../external/sys_config.h"
 
 void print_usage(char *) {
-	printf("cc0(il_gen) - A c0 compiler which generates i0 code.\n"
+	printf("cc0_cc (generate il) - A c0 compiler which generates i0 code.\n"
 			"\n"
 			"Usage: \n"
-			"    il_gen [-g|--debug] infile [-o outfile] [-h|--help]\n"
+			"    cc0_cc [-g|--debug] infile [-o outfile] [-h|--help]\n"
 			"\n"
 			"\n"
 			"Options:\n"

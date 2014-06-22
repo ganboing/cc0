@@ -1,0 +1,211 @@
+// old pagerank
+// use adjacency matrix
+// not scalable
+
+#define N (32*1024)
+#define PSIZE (1 * 1024)
+#define ITERATIONS 2
+
+standalone long rank[N * N];
+
+standalone double rank_val[N * N];
+standalone double page_rank[N];
+standalone double tmp[N];
+standalone long trigger[N];
+standalone double c;
+standalone double d;
+standalone long niterations;
+
+void normal_rank();
+
+void copy_rank()
+{
+    long i;
+
+    for(i = 0; i < N; i = i + 1)
+    {
+        page_rank[i] = tmp[i];
+    }
+
+    niterations = niterations + 1;
+
+    if(niterations < ITERATIONS)
+    {
+        normal_rank();
+    }
+
+    commit;
+}
+
+void on_compute_finished()
+{
+    long i;
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        if(trigger[i] != 3)
+        {
+            abort;
+        }
+    }
+
+    runner copy_rank() using page_rank[0, , N], tmp[0, , N],  niterations;
+
+    commitd;
+}
+
+void compute_rank_runner(long startRow, long endRow)
+{
+    long i, j;
+
+
+
+    for(i = startRow; i < endRow; i = i + 1)
+    {
+        tmp[i] = d;
+
+        for(j = 0; j < N; j = j + 1)
+        {
+            tmp[i] = tmp[i] + c * rank_val[i * N + j] * page_rank[j];
+        }
+    }
+
+    trigger[startRow] = 3;
+
+    commit;
+}
+
+void compute_rank()
+{
+    long i;
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        runner compute_rank_runner(i, i + PSIZE)
+            using tmp[i, , i + PSIZE], page_rank[0, , N], rank_val[i * N, , (i + PSIZE) * N], trigger[i, , i + PSIZE], c, d;
+    }
+
+    runner on_compute_finished()  using trigger[0, , N] watching trigger[0, , N];
+
+    return;
+}
+
+void on_normal_finished()
+{
+    long i;
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        if(trigger[i] != 2)
+        {
+            abort;
+        }
+    }
+    compute_rank();
+
+    commitd;
+}
+
+void normal_rank_runner(long startRow, long endRow)
+{
+    long i, j;
+    long sum_runner;
+
+    sum_runner = 0;
+    for(i = startRow; i < endRow; i = i + 1)
+    {
+        for(j = 0; j < N; j = j + 1)
+        {
+            sum_runner = sum_runner + rank[i * N + j];
+        }
+
+        for(j = 0; j < N; j = j + 1)
+        {
+            rank_val[i * N + j] = rank[i * N + j] / sum_runner;
+        }
+    }
+
+    trigger[startRow] = 2;
+
+    commit;
+}
+
+
+void normal_rank()
+{
+    long i;
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        runner normal_rank_runner(i, i + PSIZE)
+            using rank_val[i * N, , (i + PSIZE) * N], rank[i * N, , (i + PSIZE) * N],  trigger[i, , i + PSIZE];
+    }
+
+    runner on_normal_finished() using trigger[0, , N] watching trigger[0, , N];
+
+    return;
+}
+
+void on_init_finished()
+{
+    long i;
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        if(trigger[i] != 1)
+        {
+            abort;
+        }
+    }
+
+    normal_rank();
+
+    commitd;
+}
+
+
+void init_rank_runner(long startRow, long endRow)
+{
+    long i, j;
+    for(i = startRow; i < endRow; i = i + 1)
+    {
+        for(j = 0; j < N; j = j + 1)
+        {
+            rank[i * N + j] = 1;
+        }
+    }
+    trigger[startRow] = 1;
+    commit;
+}
+
+void init_rank()
+{
+    long i;
+
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        runner init_rank_runner(i, i + PSIZE) using rank[i * N, , (i + PSIZE) * N], trigger[i, , i + PSIZE];
+    }
+
+    runner on_init_finished() using trigger[0, , N] watching trigger[0, , N];
+
+    commit;
+}
+
+void init0()
+{
+    long i;
+    c = 0.8;
+    d = 0.2;
+    niterations = 0;
+
+    for(i = 0; i < N; i = i + PSIZE)
+    {
+        trigger[i] = 0;
+    }
+
+    runner init_rank();
+    commit;
+}
+
+void main()
+{
+    runner init0()
+        using c, d, niterations, trigger[0, , N];
+    commit;
+}

@@ -120,9 +120,8 @@ void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
 	Symbol* pFirstSym = list.front().first->second;
 	Type* pFirstTy = pFirstSym->DeclType;
 	Type::TypeSpecifier FirstSpec = pFirstTy->GetSpecifiers();
-	if(dynamic_cast<FunctionType*>(pFirstTy) )
-	{
-		::std::cerr <<  "[LINK]: function \""<< list.front().first->first<<  "\" might not be defined!\n";
+	if (dynamic_cast<FunctionType*>(pFirstTy)) {
+		::std::cerr << "[LINK]: function \"" << list.front().first->first << "\" might not be defined!\n";
 		throw ::std::runtime_error("function not found!\n");
 	}
 	for (::std::list<sym_tagit_t>::const_iterator i = list.begin(), iE = list.end(); i != iE; ++i) {
@@ -157,9 +156,8 @@ void ilprogram_symref_fixup(ILProgram* ilprogram) {
 				if (p->OperandKind == IL::Variable) {
 					if (p->SymRef->Scope == old_global_scope) {
 						p->SymRef->Scope = new_global_scope;
-						if(CompilationContext::GetInstance()->Debug)
-						{
-							::std::cout << "[LINK]: relinked symbol " << p->SymRef->Name << " in function "<<(*i)->FunctionSymbol->Name << "\n";
+						if (CompilationContext::GetInstance()->Debug) {
+							::std::cout << "[LINK]: relinked symbol " << p->SymRef->Name << " in function " << (*i)->FunctionSymbol->Name << "\n";
 						}
 					}
 				}
@@ -170,9 +168,8 @@ void ilprogram_symref_fixup(ILProgram* ilprogram) {
 	//fix global symbol symbols parent refs (Symbol::Scope)
 	for (symbol_map_t::iterator i = new_sym_map.begin(), iE = new_sym_map.end(); i != iE; ++i) {
 		i->second->Scope = new_global_scope;
-		if(CompilationContext::GetInstance()->Debug)
-		{
-			::std::cout<<"[LINK]: fixed " << i->second->Name << "\n";
+		if (CompilationContext::GetInstance()->Debug) {
+			::std::cout << "[LINK]: fixed " << i->second->Name << "\n";
 		}
 	}
 }
@@ -308,20 +305,15 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 					std::cout << i->first->first << " with symbol == " << i->first->second << " on scope " << i->second << "\n";
 				}
 			}
-			if(new_sym_map.find(ret.front().first->first) == new_sym_map.end())
-			{
+			if (new_sym_map.find(ret.front().first->first) == new_sym_map.end()) {
 				check_merge_symbol(ret);
 				new_sym_map.insert(*ret.front().first);
-			}
-			else
-			{
-				if(CompilationContext::GetInstance()->Debug)
-				{
+			} else {
+				if (CompilationContext::GetInstance()->Debug) {
 					::std::cout << ret.front().first->first << " already inserted\n";
 				}
 			}
-			if(CompilationContext::GetInstance()->Debug)
-			{
+			if (CompilationContext::GetInstance()->Debug) {
 				::std::cout << "----------\n";
 			}
 		}
@@ -348,6 +340,23 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 	purge_program(new_ilprogram);
 
 	return new_ilprogram;
+}
+
+void print_usage(char *) {
+	printf("cc0_ld (link il) - A c0 compiler which generates i0 code.\n"
+			"\n"
+			"Usage: \n"
+			"    cc0_ld [-g|--debug] [-o outfile] [input files] [-h|--help]\n"
+			"\n"
+			"\n"
+			"Options:\n"
+			"--debug, -g\n"
+			"        Output debugging information.\n"
+			"-o\n"
+			"        Output to specified file"
+			"\n");
+
+	return;
 }
 
 int main(int argc, char **argv) {
@@ -380,6 +389,9 @@ int main(int argc, char **argv) {
 			}
 		} else if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0)) {
 			CompilationContext::GetInstance()->Debug = true;
+		} else if ((strcmp(argv[i], "--help") == 0) || strcmp(argv[i], "-h") == 0) {
+			print_usage(argv[0]);
+			return 1;
 		} else {
 			cc0_obj_files.push_back(argv[i]);
 		}

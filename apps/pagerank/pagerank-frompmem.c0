@@ -1,0 +1,597 @@
+// Written by Eric Z. Ma
+
+// PR[i] = alpha + (1 - alpha) * inNbrs[i].map(j => oldPR[j] / outDeg[j]).sum
+// alpha = 0.15
+// Intitial the PR[i] are 1.0
+
+#include "libi0/stddef.h"
+#include "libi0/stdio.h"
+#include "libi0/stdint.h"
+#include "libi0/string.h"
+#include "libi0/time.h"
+#include "libi0/malloc.h"
+#include "libi0/pc.h"
+
+#include "config.h"
+
+// graph
+long vertices_cnt;
+long *vertices;
+long *in_neighbors;
+
+// iteration
+long iter;
+
+// number of calc tasks
+long num_tasks;
+
+// status
+standalone long task_status[MAX_CONCURRENT_TASKS * N_LONG_PER_PAGE];
+
+long partitions[MAX_CONCURRENT_TASKS * PARTITION_SIZE];
+
+// time measurement
+long begin_time_sec;
+long begin_time_nsec;
+
+// declaration
+void new_iter_task();
+
+#define SORT_STACK_LEN (10240)
+
+// sort by value[], results are in idx[start,,end]
+void sort(long *idx, long start, long end, double *value)
+{
+    double pivot;
+    long p;
+    long i, tmp;
+
+    long *stack;
+    long stop;
+
+    // init stack
+    // Not: ensure no overflow
+    stack = (long*)pralloc(sizeof_long * SORT_STACK_LEN);
+    stop = 0;
+
+    // push initial value
+    stack[stop] = start; stop = stop + 1;
+    stack[stop] = end; stop = stop + 1;
+
+    while (stop > 0) {
+        // pop
+        stop = stop - 1; end = stack[stop];
+        stop = stop - 1; start = stack[stop];
+
+        i = end - start;
+        if (i > 0) {
+            // partition
+            pivot = value[idx[end]];
+            p = start;
+
+            for (i = start; i < end; i = i + 1) {
+                if (value[idx[i]] < pivot) {
+                    // swap idx[i] with idx[p]
+                    tmp = idx[p];
+                    idx[p] = idx[i];
+                    idx[i] = tmp;
+                    p = p + 1;
+                }
+            }
+            // swap idx[end] with idx[p]
+            tmp = idx[p];
+            idx[p] = idx[end];
+            idx[end] = tmp;
+
+            // push
+            // right
+            stack[stop] = p + 1; stop = stop + 1;
+            stack[stop] = end; stop = stop + 1;
+            // left
+            stack[stop] = start; stop = stop + 1;
+            stack[stop] = p - 1; stop = stop + 1;
+
+            if (stop > SORT_STACK_LEN) {
+                PRINTLN("sort stack overflow");
+                abort;
+            }
+        }
+    }
+
+    return;
+}
+
+// select topk by value[], results are in idx[start,,end]
+void select_topk(long *idx, long start, long end, double *value, long k)
+{
+    double pivot;
+    long p;
+    long i, tmp;
+
+    while (1) {
+        i = end - start + 1;
+        if (i > k) {
+#ifdef DEBUG_TOPK
+            PRINTSTR("select_topk(");
+            putq(start);
+            putchar(',');
+            putq(end);
+            putchar(',');
+            putq(k);
+            PRINTLN(")");
+#endif
+            // partition
+            pivot = value[idx[end]];
+            p = start;
+
+            for (i = start; i < end; i = i + 1) {
+                if (value[idx[i]] < pivot) {
+                    // swap idx[i] with idx[p]
+                    tmp = idx[p];
+                    idx[p] = idx[i];
+                    idx[i] = tmp;
+                    p = p + 1;
+                }
+            }
+            // swap idx[end] with idx[p]
+            tmp = idx[p];
+            idx[p] = idx[end];
+            idx[end] = tmp;
+
+            // push
+            i = end - p + 1;
+            if (i == k) {
+                return;
+            } else{
+                if (i < k) {
+                    end = p - 1;
+                    k = k - i;
+                } else {
+                    start = p + 1;
+                }
+            }
+        } else {
+            return;
+        }
+    }
+
+    return;
+}
+
+void topk()
+{
+    long *idx;
+    long i;
+    double *value;
+
+#ifdef DEBUG_TOPK
+    PRINTLN("topk: build idx");
+#endif
+    // build init idx
+    idx = (long*)pralloc(sizeof_long * vertices_cnt);
+    for (i = 0; i < vertices_cnt; i = i + 1) {
+        idx[i] = i;
+    }
+    value = (double*)CUR_VALUE;
+
+    pc_sync(MAX_ITER + 1);
+    pc_get(MAX_ITER + 1, CUR_VALUE, sizeof_long * VERTEX_VALUE_SIZE * VERTICES_MAX_CNT, CUR_VALUE);
+
+#ifdef DEBUG_TOPK
+    PRINTLN("topk: final PR");
+#endif
+    // the final PR
+    for (i = 0; i < vertices_cnt; i = i + 1) {
+        value[i] = value[i] / *(double*)&vertices[VERTEX_SIZE*i+VERTEX_OFFSET_OUTDEGREE];
+#ifdef DEBUG_TOPK
+        putchar('*');putchar('('); putq(i); putchar(','); output_double(value[i]); putchar(')'); wrln();
+#endif
+    }
+
+#ifdef DEBUG_TOPK
+    for (i = vertices_cnt - 1; i > vertices_cnt - 1 - TOPK_K; i = i - 1) {
+        putchar('('); putq(idx[i]); putchar(','); output_double(value[idx[i]]); putchar(')'); wrln();
+    }
+#endif
+
+#ifdef DEBUG_TOPK
+    PRINTLN("select topk");
+#endif
+    // select first
+    select_topk(idx, 0, vertices_cnt - 1, value, TOPK_K);
+
+#ifdef DEBUG_TOPK
+    PRINTLN("sort topk");
+#endif
+    // sort the results
+    sort(idx, vertices_cnt - TOPK_K, vertices_cnt - 1, value);
+
+    // print results
+    PRINTSTR("Top ");
+    putq(TOPK_K);
+    PRINTLN(":");
+
+    for (i = vertices_cnt - 1; i > vertices_cnt - 1 - TOPK_K; i = i - 1) {
+        putchar('('); putq(idx[i]); putchar(','); output_double(value[idx[i]]); putchar(')'); wrln();
+    }
+
+    commit;
+}
+
+void get_vertices_range(long id, long *v_begin, long *v_end)
+{
+    *v_begin = partitions[id * PARTITION_SIZE + PARTITION_OFFSET_BEGIN];
+    *v_end = partitions[id * PARTITION_SIZE + PARTITION_OFFSET_END];
+
+    return;
+}
+
+void get_in_neighbors_range(long id, long *n_begin, long *n_end)
+{
+    *n_begin = partitions[id * PARTITION_SIZE + PARTITION_OFFSET_IN_BEGIN];
+    *n_end = partitions[id * PARTITION_SIZE + PARTITION_OFFSET_IN_END];
+    return;
+}
+
+void _get_in_neighbors_range(long v_begin, long v_end, long *n_begin, long *n_end)
+{
+    long v_last;
+    v_last = v_end - 1;
+
+    *n_begin = vertices[VERTEX_SIZE*v_begin+VERTEX_OFFSET_IN_NEIGHBORS];
+    *n_end = vertices[VERTEX_SIZE*v_last+VERTEX_OFFSET_IN_NEIGHBORS] +
+        vertices[VERTEX_SIZE*v_last+VERTEX_OFFSET_INDEGREE];
+
+    return;
+}
+
+
+void build_partitions()
+{
+    long i;
+    long cur;
+    long v_begin, v_end, n_begin, n_end;
+
+    long cnt[MAX_CONCURRENT_TASKS+1];
+
+    // by # of in_neighbors
+    cnt[0]=16896;cnt[1]=16896;cnt[2]=28672;cnt[3]=23552;cnt[4]=40960;cnt[5]=40960;cnt[6]=51200;cnt[7]=61440;cnt[8]=71680;cnt[9]=61440;cnt[10]=81920;cnt[11]=51200;cnt[12]=40960;cnt[13]=81920;cnt[14]=81920;cnt[15]=102400;cnt[16]=112640;cnt[17]=92160;cnt[18]=122880;cnt[19]=143360;cnt[20]=153600;cnt[21]=133120;cnt[22]=174080;cnt[23]=194560;cnt[24]=266240;cnt[25]=307200;cnt[26]=374784;cnt[27]=415744;cnt[28]=651264;cnt[29]=851922;
+    // by # of vertices
+    // cnt[0]=161792;cnt[1]=161792;cnt[2]=161792;cnt[3]=161792;cnt[4]=161792;cnt[5]=161792;cnt[6]=161792;cnt[7]=161792;cnt[8]=161792;cnt[9]=161792;cnt[10]=161792;cnt[11]=161792;cnt[12]=161792;cnt[13]=161792;cnt[14]=161792;cnt[15]=161792;cnt[16]=161792;cnt[17]=161792;cnt[18]=161792;cnt[19]=161792;cnt[20]=161792;cnt[21]=161792;cnt[22]=161792;cnt[23]=161792;cnt[24]=161792;cnt[25]=161792;cnt[26]=161792;cnt[27]=161792;cnt[28]=161792;cnt[29]=161792;cnt[30]=155603;
+
+    cur = 0;
+    for (i = 0; i < num_tasks; i = i + 1) {
+        v_begin = cur;
+        cur = cur + cnt[i];
+        v_end = cur;
+        _get_in_neighbors_range(v_begin, v_end, &n_begin, &n_end);
+
+        partitions[i * PARTITION_SIZE + PARTITION_OFFSET_BEGIN] = v_begin;
+        partitions[i * PARTITION_SIZE + PARTITION_OFFSET_END] = v_end;
+        partitions[i * PARTITION_SIZE + PARTITION_OFFSET_IN_BEGIN] = n_begin;
+        partitions[i * PARTITION_SIZE + PARTITION_OFFSET_IN_END] = n_end;
+
+    }
+
+    return;
+}
+
+void create_new_iter_task()
+{
+    long space;
+#ifdef DEBUG_TASKING
+#PRINTSTR create_new_iter_task:
+    putq(iter); wrln();
+#endif
+
+    space = SPACE_START(0);
+    runner new_iter_task()
+        using iter, num_tasks
+        , task_status[0,,num_tasks*N_LONG_PER_PAGE]
+        , vertices_cnt, vertices, in_neighbors
+        , partitions[0,,MAX_CONCURRENT_TASKS * PARTITION_SIZE]
+        in space
+        ;
+    return;
+}
+
+void barrier_task(long cur_iter)
+{
+    long i;
+
+    if (cur_iter != iter) {
+#ifdef DEBUG_TASKING
+#PRINTSTR I am waiting for too long... My cur_iter:
+        putq(cur_iter);
+#PRINTSTR  iter:
+        putq(iter);
+        PRINTLN(". abortd now.");
+#endif
+        abortd;
+    }
+
+    // check all tasks' status
+    for (i = 0; i < num_tasks; i = i + 1) {
+        if (task_status[i*N_LONG_PER_PAGE] != TASK_STATUS_FINISHED) {
+            abort;
+        }
+    }
+
+    // all tasks have finished
+    iter = iter + 1;
+    if (iter == MAX_ITER + 1) {
+        PRINTSTR("Reached max iter:");
+        putq(MAX_ITER);
+        PRINTLN(".");
+
+        PRINTSTR("Time used: ");
+        i = print_time_diff_and_update(&begin_time_sec, &begin_time_nsec);
+        PRINTLN(" seconds.");
+#ifdef PRINT_TOPK
+        runner topk()
+            using
+            vertices_cnt, vertices
+            , vertices[0,,VERTICES_MAX_CNT * VERTEX_SIZE]
+            ;
+#endif
+        commitd;
+    }
+
+    // start next iteration
+    create_new_iter_task();
+
+    commitd;
+}
+
+void calc_task(long id)
+{
+    long v_begin;
+    long v_end;
+    long n_begin;
+    long n_end;
+    long i;
+    long j;
+
+    long* cur_pr;
+    long* pre_pr;
+
+    long nbr;
+
+    double new_pr;
+
+    long *v; // vertices
+    long *n; // neighbors
+
+#ifdef DEBUG_TASKING
+#PRINTSTR calc_task(
+    putq(id);
+#PRINTSTR ) begin @ iter
+    putq(iter); wrln();
+#endif
+
+    get_vertices_range(id, &v_begin, &v_end);
+    get_in_neighbors_range(id, &n_begin, &n_end);
+
+    pre_pr = (long*)PRE_VALUE;
+    cur_pr = (long*)CUR_VALUE;
+
+    pc_get(iter, CUR_VALUE, sizeof_long * VERTEX_VALUE_SIZE * VERTICES_MAX_CNT, PRE_VALUE);
+
+#ifdef ENABLE_CACHING
+    v = (long*)CACHE_VERTICES;
+    n = (long*)CACHE_IN_NEIGHBORS;
+
+    // check whether local cache in sticky PR is ready
+    if (*(long*)CACHE_MAGIC_NUM != STICKY_CHECK_MAGIC_NUM) {
+#ifdef DEBUG
+        PRINTLN("Make cache.");
+#endif
+#ifdef STATIC_TASK_ASSIGNMENT
+        memcpy(&vertices[v_begin*VERTEX_SIZE], sizeof_long * ((v_end - v_begin + 1) * VERTEX_SIZE), &v[v_begin*VERTEX_SIZE]);
+        memcpy(&in_neighbors[n_begin], sizeof_long * (n_end - n_begin + 1), &n[n_begin]);
+#else // STATIC_TASK_ASSIGNMENT
+        PRINTSTR("vertices len: ");
+        putq(sizeof_long * (VERTICES_MAX_CNT * VERTEX_SIZE)); wrln();
+        PRINTSTR("in_neighbors len: ");
+        putq(sizeof_long * (IN_NEIGHBORS_MAX_LEN)); wrln();
+        memcpy(&vertices[0], sizeof_long * (VERTICES_MAX_CNT * VERTEX_SIZE), &v[0]);
+        memcpy(&in_neighbors[0], sizeof_long * (IN_NEIGHBORS_MAX_LEN), &n[0]);
+#endif
+        *(long*)CACHE_MAGIC_NUM = STICKY_CHECK_MAGIC_NUM;
+    }
+#else // ENABLE_CACHING
+    v = &vertices[0];
+    n = &in_neighbors[0];
+#endif
+
+    if (iter == 0) {
+        for (i = v_begin; i < v_end; i = i + 1) {
+            new_pr = PR_initial * *(double*)&v[VERTEX_SIZE*i + VERTEX_OFFSET_OUTDEGREE];
+            *(double*)&cur_pr[VERTEX_VALUE_SIZE*i] = new_pr;
+#ifdef DEBUG_PR_CALC
+            putq(iter);putchar(':');putchar('('); putq(i); putchar(','); output_double(*(double*)&cur_pr[VERTEX_VALUE_SIZE*i]); putchar(')'); wrln();
+#endif
+
+        }
+    } else {
+        for (i = v_begin; i < v_end; i = i + 1) {
+            new_pr = 0.0;
+            n_begin = v[VERTEX_SIZE*i + VERTEX_OFFSET_IN_NEIGHBORS];
+            n_end = n_begin + v[VERTEX_SIZE*i + VERTEX_OFFSET_INDEGREE];
+            for (j = n_begin; j < n_end; j = j + 1) {
+                nbr = n[j];
+                new_pr = new_pr +
+                    *(double*)&pre_pr[VERTEX_VALUE_SIZE*nbr];
+#ifdef DEBUG_PR_CALC
+                putq(i);putchar('<');putchar('=');putq(nbr);putchar('|');output_double(*(double*)&pre_pr[VERTEX_VALUE_SIZE*nbr]);putchar('=');putchar('>');output_double(new_pr);wrln();
+#endif
+            }
+
+            new_pr = PR_alpha +  new_pr * (1.0 - PR_alpha);
+            new_pr = new_pr * *(double*)&v[VERTEX_SIZE*i+VERTEX_OFFSET_OUTDEGREE];
+            *(double*)&cur_pr[VERTEX_VALUE_SIZE*i] = new_pr;
+#ifdef DEBUG_PR_CALC
+            putq(iter);putchar(':');putchar('('); putq(i); putchar(','); output_double(*(double*)&cur_pr[VERTEX_VALUE_SIZE*i]); putchar(')'); wrln();
+#endif
+
+        }
+    }
+
+#ifdef DEBUG_TASKING
+#PRINTSTR calc_task(
+    putq(id);
+#PRINTSTR ) done @ iter
+    putq(iter); wrln();
+#endif
+
+    pc_write(iter+1, &cur_pr[VERTEX_VALUE_SIZE*v_begin], sizeof_long * VERTEX_VALUE_SIZE * (v_end-v_begin));
+
+    // mark finished
+    task_status[id*N_LONG_PER_PAGE] = TASK_STATUS_FINISHED;
+
+    commit;
+}
+
+void new_iter_task()
+{
+    long i;
+
+    long v_begin;
+    long v_end;
+    long n_begin;
+    long n_end;
+
+    long space;
+
+#ifdef DEBUG_TASKING
+#PRINTSTR iter:
+    putq(iter); wrln();
+#endif
+
+    if (iter > 0) {
+        pc_sync(iter);
+    }
+
+    for (i = 0; i < num_tasks; i = i + 1) {
+
+        get_vertices_range(i, &v_begin, &v_end);
+        get_in_neighbors_range(i, &n_begin, &n_end);
+
+#ifdef DEBUG_TASKING
+#PRINTSTR task(
+        putq(i);
+#PRINTSTR ) => vertices[
+        putq(v_begin);
+#PRINTSTR ,,
+        putq(v_end);
+#PRINTSTR ] <
+        putq(v_end - v_begin);
+#PRINTSTR >, in_neighbors[
+        putq(n_begin);
+#PRINTSTR ,,
+        putq(n_end);
+#PRINTSTR ] <
+        putq(n_end - n_begin);
+#PRINTSTR >
+        wrln();
+#endif
+
+        space = SPACE_START(i+1);
+
+        if (iter == 0) {
+            runner calc_task(i)
+                using
+                iter, num_tasks
+                , vertices_cnt, vertices, in_neighbors
+                // TODO: optimization: narrow down the snapshot ranges
+                , in_neighbors[0,,IN_NEIGHBORS_MAX_LEN]
+                , vertices[0,,VERTICES_MAX_CNT * VERTEX_SIZE]
+                , task_status[i*N_LONG_PER_PAGE,,i*N_LONG_PER_PAGE + 1]
+                , partitions[0,,MAX_CONCURRENT_TASKS * PARTITION_SIZE]
+                in space
+                ;
+        } else {
+            runner calc_task(i)
+                using
+                iter, num_tasks
+                , vertices_cnt, vertices, in_neighbors
+                // TODO: optimization: narrow down the snapshot ranges
+                // , in_neighbors[0,,IN_NEIGHBORS_MAX_LEN]
+                // , vertices[0,,VERTICES_MAX_CNT * VERTEX_SIZE]
+                , task_status[i*N_LONG_PER_PAGE,,i*N_LONG_PER_PAGE + 1]
+                , partitions[0,,MAX_CONCURRENT_TASKS * PARTITION_SIZE]
+                in space
+                ;
+        }
+
+        // mark created
+        task_status[i*N_LONG_PER_PAGE] = TASK_STATUS_CREATED;
+    }
+
+    // Note: to make time measurement accurate, the barrier task and the
+    // init_task should be run on the same node
+    space = SPACE_START(0);
+    // space = SPACE_START(31);
+    runner barrier_task(iter)
+        using iter, num_tasks
+        , vertices_cnt, vertices, in_neighbors
+        , begin_time_sec, begin_time_nsec
+        watching task_status[0,,num_tasks*N_LONG_PER_PAGE]
+        in space
+        ;
+
+    commit;
+}
+
+void init_task()
+{
+    long i;
+#ifdef DEBUG_TASKING
+    PRINTLN("Start init_task.");
+#endif
+
+    // get begin time
+    i = gettime(&begin_time_sec, &begin_time_nsec);
+
+    // initialize graph metadata address
+    vertices_cnt = *(long*)VERTICES_ADDRESS;
+
+    vertices = (long*)(VERTICES_ADDRESS + sizeof_long);
+    in_neighbors = (long*)(IN_NEIGHBORS_ADDRESS);
+
+    // initialize controlling data
+    iter = 0;
+    num_tasks = NUM_TASKS;
+#ifdef DEBUG_TASKING
+    putq(num_tasks);
+    PRINTLN("tasks");
+#endif
+
+    // build the partition table
+    build_partitions();
+
+    // start iterations
+    create_new_iter_task();
+
+#ifdef DEBUG_TASKING
+    PRINTLN("End init_task.");
+#endif
+    commit;
+}
+
+void main()
+{
+    long space;
+
+    space = SPACE_START(0);
+    runner init_task()
+        using iter, num_tasks
+        , vertices_cnt, vertices, in_neighbors
+        , begin_time_sec, begin_time_nsec
+        , ((long*)VERTICES_ADDRESS)[0,,(VERTICES_MAX_CNT * VERTEX_SIZE)]
+        , ((long*)IN_NEIGHBORS_ADDRESS)[0,,IN_NEIGHBORS_MAX_LEN]
+        , partitions[0,,MAX_CONCURRENT_TASKS * PARTITION_SIZE]
+        in space
+        ;
+    commit;
+}
