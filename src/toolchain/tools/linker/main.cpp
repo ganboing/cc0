@@ -96,13 +96,6 @@ typedef ::std::map< ::std::string, ILFunction*> il_func_map_t;
 
 }
 
-/*template<class Key, class T, class Map = ::std::map<Key, T>, class Set = ::std::set<Key> >
- void remove_duplicate_symbol(Map& sym_map, const Set& sym_set) {
- for (Set::const_iterator i = sym_set.begin(), iE = sym_set.end(); i != iE; ++i) {
- sym_map.erase(*i);
- }
- }*/
-
 void DumpScope(SymbolScope *scope, std::ofstream &dump) {
 	char buffer[100];
 

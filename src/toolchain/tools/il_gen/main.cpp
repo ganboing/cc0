@@ -9,16 +9,12 @@
 #include <ctime>
 #include <boost/archive/xml_oarchive.hpp>
 
-#include <core/Core.h>
-#include <frontend/c/CSourceParser.h>
-#include <backend/i0/I0CodeGenerator.h>
-#include <binary/flat/FlatFileWriter.h>
-#include <core/Symbol/SymbolAddressAllocator.h>
-#include <core/Pass/ConstantPropagation.h>
-#include <core/Pass/TypeDeduction.h>
+#include "core/Core.h"
+#include "frontend/c/CSourceParser.h"
 #include "core/Serialization/ExportDeriveTypes.h"
 #include "core/Serialization/ExportDeriveExpressions.h"
 #include "core/Serialization/ObjFormat.h"
+#include "core/Misc/FilePath.h"
 
 #include "../../../external/mem.h"
 #include "../../../external/sys_config.h"
@@ -43,22 +39,6 @@ void print_usage(char *) {
 int main(int argc, char **argv) {
 	CompilationContext *context = CompilationContext::GetInstance();
 
-	// context->TextStart =  0x400000000;
-	// context->DataStart =  0x400004000;
-	// context->RDataStart = 0x400008000;
-	// Use macros from the sys_config.h
-	context->TextStart = I0_CODE_BEGIN;
-	context->DataStart = I0_CODE_BEGIN + 0x4000;
-	context->RDataStart = I0_CODE_BEGIN + 0x8000;
-
-	//NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
-	// context->BssStart =   0x440000000;
-	context->BssStart = AMR_OFFSET_BEGIN;
-
-	// NOTE: default targe code type
-	// Only CODE_TYPE_I0 is supported
-	CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-
 	::std::string c0_obj_file;
 	::std::vector<char*> cpp_options;
 
@@ -66,6 +46,9 @@ int main(int argc, char **argv) {
 		if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
 			if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
 				c0_obj_file = argv[++i];
+			} else {
+				std::cerr << "invalid argument!\n";
+				return -1;
 			}
 		} else if (!strncmp("-D", argv[i], 2)) {
 			cpp_options.push_back(argv[i]);
@@ -90,7 +73,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (c0_obj_file.size() == 0) {
-		c0_obj_file = "a.c0obj";
+		c0_obj_file = GetFileNameWithoutExtension(CompilationContext::GetInstance()->InputFiles.front()) + ".c0obj";
 		if (CompilationContext::GetInstance()->Debug) {
 			std::cout << "output file default to " << c0_obj_file << "\n";
 		}
