@@ -7,7 +7,7 @@ Declaration::Declaration():_type(NULL), _offset(0)
 {
 }
 
-Declaration::Declaration(std::string name, Type * type)
+Declaration::Declaration(std::string name, Type * type) : _offset(0)
 {
     _name = name;
     _type = type;
