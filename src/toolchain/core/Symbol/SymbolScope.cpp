@@ -8,16 +8,16 @@
 #include <core/Type/Type.h>
 #include <core/CodeDom/Expression.h>
 #include "core/IL/ILProgram.h"
+#include "SymbolScope.h"
+#include "Symbol.h"
+
+SymbolScope* SymbolScope::_rootScope = NULL;
 
 void SymbolScope::__SetRootScopt(ILProgram* il_program)
 {
 	_rootScope = il_program->Scope;
 }
 
-#include "SymbolScope.h"
-#include "Symbol.h"
-
-SymbolScope* SymbolScope::_rootScope = NULL;
 
 SymbolScope::SymbolScope():	_parentScope(NULL), _kind(Global), _expression(NULL), _memorySize(0)
 {
