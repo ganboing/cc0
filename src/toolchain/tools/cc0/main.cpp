@@ -380,7 +380,7 @@ int main(int argc, char **argv) {
         ::boost::archive::xml_oarchive c0_obj_archive(filestream);
         c0_obj_archive & BOOST_SERIALIZATION_NVP(obj);
     } catch (std::exception& e) {
-        std::cerr << "Serialization to object file failed!\n exception " << e.what();
+        std::cerr << "Serialization to object file failed!\n exception: " << e.what() << "\n";
         return 1;
     }
     return 0;

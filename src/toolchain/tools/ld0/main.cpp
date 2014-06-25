@@ -493,6 +493,6 @@ try
 }
 catch(std::exception& e)
 {
-    std::cerr << "exception thrown with" << e.what();
+    std::cerr << "exception thrown: " << e.what()  << "\n";
     return 1;
 }
