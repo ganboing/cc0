@@ -161,8 +161,9 @@ int main(int argc, char **argv) {
                     cc0_cmdline << " -g";
                 }
                 if (debug) {
-                    std::cout << "invoking " << cc0_cmdline;
+                    std::cout << "invoking " << cc0_cmdline.str() << "\n";
                 }
+                std::cout.flush();
                 if (system(cc0_cmdline.str().c_str())) {
                     std::cerr << "compiling " << *i << "failed!\n";
                     return 1;
