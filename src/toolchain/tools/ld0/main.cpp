@@ -343,7 +343,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
 }
 
 void print_usage(char *) {
-	printf("cc0_ld (link il) - A c0 compiler which generates i0 code.\n"
+	printf("ld0 (link cc0 IL) - A cc0 IL linker.\n"
 			"\n"
 			"Usage: \n"
 			"    cc0_ld [-g|--debug] [-o outfile] [input files] [-h|--help]\n"
