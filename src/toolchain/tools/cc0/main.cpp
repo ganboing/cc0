@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <unistd.h>
 
 #include <boost/archive/xml_oarchive.hpp>
 

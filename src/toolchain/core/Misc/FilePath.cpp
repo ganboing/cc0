@@ -41,3 +41,15 @@
     }
     return ::std::string(path.c_str(), slash_pos + 1);
 }
+
+::std::string ConstructFilePath(const ::std::string& dir, const ::std::string& name) {
+    if (dir.size()) {
+        if (dir[dir.size() - 1] == '/') {
+            return dir + name;
+        } else {
+            return dir + "/" + name;
+        }
+    } else {
+        return name;
+    }
+}
