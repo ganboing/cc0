@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <map>
 
 #include <boost/archive/xml_oarchive.hpp>
@@ -61,17 +62,18 @@ void DumpScope(SymbolScope *scope, std::ofstream &dump) {
 }
 
 void print_usage(char *cmd) {
-    printf(
-            "cc0 - A c0 compiler which generates i0 code.\n"
+    printf("cc0 - A c0 compiler which generates i0 code.\n"
             "\n"
             "Usage: \n"
-            "    cc0 [-g|--debug] [-Dopts] [-Idirs] [-h|--help]\n"
-            "        infile -o outfile\n"
+            "    cc0 [-g|--debug] [-c] [-Dopts] [-Idirs] [-h|--help]\n"
+            "        infile[s] -o [outfile]\n"
             "\n"
             "\n"
             "Options:\n"
             "--debug, -g\n"
             "        Output debugging information.\n"
+            "-c\n"
+            "        Compile only.\n"
             "-Dmacro...\n"
             "        Pass -Dmacro... to the preprocessor.\n"
             "-Idir...\n"
@@ -82,35 +84,22 @@ void print_usage(char *cmd) {
 }
 
 int main(int argc, char **argv) {
-    bool codeTypeDefined = false;
     std::string cpp_args = "";
-
-    CompilationContext *context = CompilationContext::GetInstance();
-
-    // context->TextStart =  0x400000000;
-    // context->DataStart =  0x400004000;
-    // context->RDataStart = 0x400008000;
-    // Use macros from the sys_config.h
-    context->TextStart = I0_CODE_BEGIN;
-    context->DataStart = I0_CODE_BEGIN + 0x4000;
-    context->RDataStart = I0_CODE_BEGIN + 0x8000;
-
-    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
-    // context->BssStart =   0x440000000;
-    context->BssStart = AMR_OFFSET_BEGIN;
-
-    // NOTE: default targe code type
-    // Only CODE_TYPE_I0 is supported
-    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-    CompilationContext::GetInstance()->CompileOnly = true;
+    std::vector<std::string> input_files;
+    std::string output_file;
+    bool compile_only = false;
+    bool debug = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
             if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
-                CompilationContext::GetInstance()->OutputFile = argv[++i];
+                output_file = argv[++i];
+            } else {
+                std::cerr << "syntax error!\n";
+                return -1;
             }
         } else if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0)) {
-            CompilationContext::GetInstance()->Debug = true;
+            debug = true;
         }
         /*
          else if (strcmp(argv[i], "--i0") == 0)
@@ -138,6 +127,8 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "-I") == 0 && i + 1 < argc) {
             cpp_args += " " + std::string(argv[i]) + std::string(argv[i + 1]);
             ++i;
+        } else if ((strcmp(argv[i], "-c") == 0)) {
+            compile_only = true;
         } else if (strncmp(argv[i], "-I", 2) == 0) {
             cpp_args += " " + std::string(argv[i]);
         } else if (strncmp(argv[i], "-D", 2) == 0) {
@@ -146,28 +137,85 @@ int main(int argc, char **argv) {
             print_usage(argv[0]);
             return 0;
         } else if (strncmp(argv[i], "-", 1) != 0) {
-            if (CompilationContext::GetInstance()->InputFiles.size()) {
-                std::cerr <<
-                        "Multiple input files applied!\n"
-                        "Hint: to compile multiple files, invoke cc0 individually\n"
-                        "Hint: use ld0 to link\n";
-                return -1;
-            }
-            CompilationContext::GetInstance()->InputFiles.push_back(argv[i]);
+            input_files.push_back(argv[i]);
         } else {
-            std::cout << "Unsupported option: " + std::string(argv[i]) << std::endl;
+            std::cerr << "Unsupported option: " + std::string(argv[i]) << std::endl;
             return -1;
         }
     }
 
-    if (CompilationContext::GetInstance()->InputFiles.size() == 0) {
-        std::cerr << "No input file applied!\n";
+    if (input_files.size() == 0) {
+        std::cerr << "No input files applied!\n";
         return -1;
     }
 
-    if (CompilationContext::GetInstance()->OutputFile.size() == 0) {
-        CompilationContext::GetInstance()->OutputFile = GetFileNameWithoutExtension(CompilationContext::GetInstance()->InputFiles.front()) + ".o";
+    if (!compile_only) {
+        std::vector<std::string> objfiles;
+        for (std::vector<std::string>::iterator i = input_files.begin(), iE = input_files.end(); i != iE; ++i) {
+            if (GetFileExtension(*i) == ".c" || GetFileExtension(*i) == ".c0") {
+                std::string obj = ReplaceFileNameExtension(*i, ".o");
+                objfiles.push_back(obj);
+                std::stringstream cc0_cmdline;
+                cc0_cmdline << "cc0 -c " << *i << " -o " << obj << cpp_args;
+                if (debug) {
+                    cc0_cmdline << " -g";
+                }
+                if (debug) {
+                    std::cout << "invoking " << cc0_cmdline;
+                }
+                if (system(cc0_cmdline.str().c_str())) {
+                    std::cerr << "compiling " << *i << "failed!\n";
+                    return 1;
+                }
+            } else if (GetFileExtension(*i) == ".o") {
+                objfiles.push_back(*i);
+            } else {
+                ::std::cerr << "input file " << *i << " ignored!\n";
+            }
+        }
+        if (output_file.size() == 0) {
+            output_file = "a.bin";
+        }
+        std::stringstream ld0_cmdline;
+        std::string libi0_obj;
+        char* libi0_path = getenv("LIBI0");
+        ld0_cmdline << "ld0 -o " << output_file << " " << libi0_path << "/libcrt.o";
+        for (std::vector<std::string>::iterator i = objfiles.begin(), iE = objfiles.end(); i != iE; ++i) {
+            ld0_cmdline << " " << *i;
+        }
+        return 0;
     }
+
+    if (input_files.size() > 1) {
+        std::cerr << "Multiple input files applied during compiling!\n";
+        return -1;
+    }
+    if (output_file.size() == 0) {
+        output_file = ReplaceFileNameExtension(input_files.front(), ".o");
+    }
+
+    CompilationContext *context = CompilationContext::GetInstance();
+
+    context->InputFiles = input_files;
+    context->OutputFile = output_file;
+    context->Debug = debug;
+    context->CompileOnly = compile_only;
+
+    // context->TextStart =  0x400000000;
+    // context->DataStart =  0x400004000;
+    // context->RDataStart = 0x400008000;
+    // Use macros from the sys_config.h
+    context->TextStart = I0_CODE_BEGIN;
+    context->DataStart = I0_CODE_BEGIN + 0x4000;
+    context->RDataStart = I0_CODE_BEGIN + 0x8000;
+
+    //NOTE: Currently, all global variables are put in the bss section and are NOT initialized with zeros, the data/rdata is not used.
+    // context->BssStart =   0x440000000;
+    context->BssStart = AMR_OFFSET_BEGIN;
+
+    // NOTE: default targe code type
+    // Only CODE_TYPE_I0 is supported
+    CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
 
     ILProgram *il = NULL;
 
@@ -236,9 +284,7 @@ int main(int argc, char **argv) {
             context->CodeDom->Accept(ilgen);
 
             il = ilgen->GetILProgram();
-        }
-        else
-        {
+        } else {
             std::cerr << "Currently only c0 source files are supported!\n";
             return 2;
         }
@@ -250,7 +296,7 @@ int main(int argc, char **argv) {
 
     if (CompilationContext::GetInstance()->Debug && il != NULL) {
         std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
-        baseFileName = GetFileNameWithoutExtension(baseFileName) + ".il";
+        baseFileName = ReplaceFilePathExtension(baseFileName, ".il");
 
         std::ofstream ildump(baseFileName.c_str());
         for (std::vector<ILClass *>::iterator cit = il->Claases.begin(); cit != il->Claases.end(); ++cit) {
@@ -292,7 +338,7 @@ int main(int argc, char **argv) {
         // printf("--------------------------------------\n");
         // printf("Optimized IL:\n");
         std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
-        baseFileName = GetFileNameWithoutExtension(baseFileName) + ".opt.il";
+        baseFileName = ReplaceFilePathExtension(baseFileName, ".opt.il");
 
         std::ofstream ildump(baseFileName.c_str());
         for (std::vector<ILClass *>::iterator cit = il->Claases.begin(); cit != il->Claases.end(); ++cit) {
@@ -321,18 +367,21 @@ int main(int argc, char **argv) {
 
     if (CompilationContext::GetInstance()->Debug) {
         std::string baseFileName = CompilationContext::GetInstance()->OutputFile;
-        std::string mapFileName = GetFileNameWithoutExtension(baseFileName) + ".var";
+        std::string mapFileName = ReplaceFilePathExtension(baseFileName, ".var");
 
         std::ofstream mapdump(mapFileName.c_str());
         DumpScopeTypes(SymbolScope::GetRootScope(), mapdump, "");
         mapdump.close();
     }
 
-    {
+    try {
         CC0Obj obj(context->CodeDom, context->IL);
         ::std::ofstream filestream(CompilationContext::GetInstance()->OutputFile.c_str());
         ::boost::archive::xml_oarchive c0_obj_archive(filestream);
         c0_obj_archive & BOOST_SERIALIZATION_NVP(obj);
+    } catch (std::exception& e) {
+        std::cerr << "Serialization to object file failed!\n exception " << e.what();
+        return 1;
     }
     return 0;
 

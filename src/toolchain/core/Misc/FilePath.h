@@ -7,7 +7,8 @@
 #error "Currently the FilePath library only works on Linux!"
 #else
 
-::std::string ReplaceFileExtension(const ::std::string& path, const ::std::string& new_ext);
+::std::string ReplaceFilePathExtension(const ::std::string& path, const ::std::string& new_ext);
+::std::string ReplaceFileNameExtension(const ::std::string& path, const ::std::string& new_ext);
 ::std::string GetFileExtension(const ::std::string& path);
 ::std::string GetFileNameWithoutExtension(const ::std::string& path);
 ::std::string GetFileName(const ::std::string& path);

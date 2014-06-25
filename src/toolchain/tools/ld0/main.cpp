@@ -359,7 +359,9 @@ void print_usage(char *) {
 	return;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+try
+{
 	CompilationContext *context = CompilationContext::GetInstance();
 
 // context->TextStart =  0x400000000;
@@ -417,7 +419,7 @@ int main(int argc, char **argv) {
 	SymbolScope::__SetRootScopt(new_il);
 
 	if (CompilationContext::GetInstance()->Debug) {
-		std::ofstream ildump(ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".ildump").c_str());
+		std::ofstream ildump(ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".ildump").c_str());
 		for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(), citE = new_il->Claases.end(); cit != citE; ++cit) {
 			ILClass *c = *cit;
 
@@ -446,8 +448,8 @@ int main(int argc, char **argv) {
 
 	if (CompilationContext::GetInstance()->Debug) {
 		std::string dumpFileName, mapFileName;
-		dumpFileName = ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".objdump");
-		mapFileName = ReplaceFileExtension(CompilationContext::GetInstance()->OutputFile, ".map");
+		dumpFileName = ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".objdump");
+		mapFileName = ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".map");
 
 		std::ofstream objdump(dumpFileName.c_str());
 		int64_t currentText = context->TextStart;
@@ -488,4 +490,9 @@ int main(int argc, char **argv) {
 	binwt->WriteBinaryFile(context->OutputFile, &sections, context->TextStart);
 
 	return 0;
+}
+catch(std::exception& e)
+{
+    std::cerr << "exception thrown with" << e.what();
+    return 1;
 }
