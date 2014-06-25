@@ -159,8 +159,6 @@ int main(int argc, char **argv) {
                 cc0_cmdline << "cc0 -c " << *i << " -o " << obj << cpp_args;
                 if (debug) {
                     cc0_cmdline << " -g";
-                }
-                if (debug) {
                     std::cout << "invoking " << cc0_cmdline.str() << "\n";
                 }
                 std::cout.flush();
@@ -188,6 +186,12 @@ int main(int argc, char **argv) {
         for (std::vector<std::string>::iterator i = objfiles.begin(), iE = objfiles.end(); i != iE; ++i) {
             ld0_cmdline << " " << *i;
         }
+        if(debug)
+        {
+            ld0_cmdline << " -g";
+            std::cout << "invoking " << ld0_cmdline.str() << "\n";
+        }
+        ::std::cout.flush();
         if (system(ld0_cmdline.str().c_str())) {
             std::cerr << "Link failed\n";
             return 1;
