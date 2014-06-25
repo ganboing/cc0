@@ -180,9 +180,17 @@ int main(int argc, char **argv) {
         std::stringstream ld0_cmdline;
         std::string libi0_obj;
         char* libi0_path = getenv("LIBI0");
+        if (libi0_path == NULL) {
+            std::cerr << "Cannot locate libi0\n";
+            return 1;
+        }
         ld0_cmdline << "ld0 -o " << output_file << " " << libi0_path << "/libcrt.o";
         for (std::vector<std::string>::iterator i = objfiles.begin(), iE = objfiles.end(); i != iE; ++i) {
             ld0_cmdline << " " << *i;
+        }
+        if (system(ld0_cmdline.str().c_str())) {
+            std::cerr << "Link failed\n";
+            return 1;
         }
         return 0;
     }
