@@ -433,7 +433,7 @@ try {
     }
 
     //Search for libraries
-    for (::std::vector< ::std::string>::iterator i = lib_obj_files.begin(), iE = lib_obj_files.end(); i != iE; ++i) {
+    for (::std::list< ::std::string>::iterator i = lib_obj_files.begin(), iE = lib_obj_files.end(); i != iE; ++i) {
         cc0_obj_files.push_back(FindFileInDirs(*i, lib_paths.begin(), lib_paths.end()));
     }
 
