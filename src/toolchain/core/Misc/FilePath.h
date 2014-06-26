@@ -4,6 +4,7 @@
 #include <string>
 #include <stdexcept>
 #include <unistd.h>
+#include <iostream>
 
 #ifndef __linux__
 #error "Currently the FilePath library only works on Linux!"
@@ -18,10 +19,12 @@
 ::std::string ConstructFilePath(const ::std::string& dir, const ::std::string& name);
 
 template<class ForwardIt>
-::std::string FindFileInDirs(const ::std::string& file_name, ForwardIt files_begin, ForwardIt files_end) {
-    for (ForwardIt i = files_begin; i != files_end; ++i) {
+::std::string FindFileInDirs(const ::std::string& file_name, ForwardIt dirs_begin, ForwardIt dirs_end) {
+    for (ForwardIt i = dirs_begin; i != dirs_end; ++i) {
         ::std::string file_path(ConstructFilePath(*i, file_name));
+        ::std::cout << "searching " << file_path << "\n";
         if (access(file_path.c_str(), F_OK)) {
+            ::std::cout << "find\n";
             return file_path;
         }
     }
