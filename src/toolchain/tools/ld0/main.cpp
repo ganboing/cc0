@@ -83,13 +83,13 @@ public:
     }
 };
 
-typedef ::std::map< ::std::string, Symbol*> symbol_map_t;
+typedef ::std::map<::std::string, Symbol*> symbol_map_t;
 typedef TagIterator<symbol_map_t> sym_tagit_t;
 typedef TagItPool<symbol_map_t> sym_tagit_pool_t;
-typedef ::std::set< ::std::string> realloc_record_t;
+typedef ::std::set<::std::string> realloc_record_t;
 typedef ::std::map<SymbolScope*, realloc_record_t> realloc_map_t;
 typedef ::std::list<sym_tagit_t> sym_merge_list_t;
-typedef ::std::map< ::std::string, ILFunction*> il_func_map_t;
+typedef ::std::map<::std::string, ILFunction*> il_func_map_t;
 
 }
 
@@ -110,12 +110,17 @@ void DumpScope(SymbolScope *scope, ::std::ofstream &dump) {
     }
 }
 
-CC0Obj load_file_context(const ::std::string& file) {
+CC0Obj load_file_context(const ::std::string& file)
+try {
     ::std::ifstream f(file.c_str());
     ::boost::archive::xml_iarchive obj_file(f);
     CC0Obj obj;
     obj_file & BOOST_SERIALIZATION_NVP(obj);
     return obj;
+}
+catch (std::exception& e) {
+    std::cerr << file << "not loaded!\n";
+    throw;
 }
 
 void check_merge_symbol(const ::std::list<sym_tagit_t>& list) {
@@ -385,9 +390,9 @@ try {
 // NOTE: default targe code type
 // Only CODE_TYPE_I0 is supported
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-    ::std::list< ::std::string> cc0_obj_files;
-    ::std::list< ::std::string> lib_obj_files;
-    ::std::list< ::std::string> lib_paths;
+    ::std::list<::std::string> cc0_obj_files;
+    ::std::list<::std::string> lib_obj_files;
+    ::std::list<::std::string> lib_paths;
 
     //parse command line
     for (int i = 1; i < argc; i++) {
@@ -427,13 +432,13 @@ try {
 
     if (CompilationContext::GetInstance()->Debug) {
         ::std::cout << "ld0 search paths:\n";
-        for (::std::list< ::std::string>::iterator i = lib_paths.begin(), iE = lib_paths.end(); i != iE; ++i) {
+        for (::std::list<::std::string>::iterator i = lib_paths.begin(), iE = lib_paths.end(); i != iE; ++i) {
             ::std::cout << *i << "\n";
         }
     }
 
     //Search for libraries
-    for (::std::list< ::std::string>::iterator i = lib_obj_files.begin(), iE = lib_obj_files.end(); i != iE; ++i) {
+    for (::std::list<::std::string>::iterator i = lib_obj_files.begin(), iE = lib_obj_files.end(); i != iE; ++i) {
         cc0_obj_files.push_back(FindFileInDirs(*i, lib_paths.begin(), lib_paths.end()));
     }
 
