@@ -385,8 +385,8 @@ try {
 // NOTE: default targe code type
 // Only CODE_TYPE_I0 is supported
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
-    ::std::vector< ::std::string> cc0_obj_files;
-    ::std::vector< ::std::string> lib_obj_files;
+    ::std::list< ::std::string> cc0_obj_files;
+    ::std::list< ::std::string> lib_obj_files;
     ::std::list< ::std::string> lib_paths;
 
     //parse command line
@@ -422,6 +422,13 @@ try {
         char* cc0_lib_path = getenv("LD0_LIB");
         if (cc0_lib_path) {
             SplitAndStorePath(cc0_lib_path, back_inserter(lib_paths));
+        }
+    }
+
+    if (CompilationContext::GetInstance()->Debug) {
+        ::std::cout << "ld0 search paths:\n";
+        for (::std::list< ::std::string>::iterator i = lib_paths.begin(), iE = lib_paths.end(); i != iE; ++i) {
+            ::std::cout << *i << "\n";
         }
     }
 
