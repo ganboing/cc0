@@ -23,7 +23,7 @@ template<class ForwardIt>
     for (ForwardIt i = dirs_begin; i != dirs_end; ++i) {
         ::std::string file_path(ConstructFilePath(*i, file_name));
         ::std::cout << "searching " << file_path << "\n";
-        if (access(file_path.c_str(), F_OK)) {
+        if (!access(file_path.c_str(), F_OK)) {
             ::std::cout << "find\n";
             return file_path;
         }
