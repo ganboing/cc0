@@ -93,14 +93,14 @@ typedef ::std::map< ::std::string, ILFunction*> il_func_map_t;
 
 }
 
-void DumpScope(SymbolScope *scope, std::ofstream &dump) {
+void DumpScope(SymbolScope *scope, ::std::ofstream &dump) {
     char buffer[100];
 
     for (std::map<std::string, Symbol *>::iterator it = scope->GetSymbolTable()->begin(); it != scope->GetSymbolTable()->end(); ++it) {
         Symbol *symbol = it->second;
         if (typeid(*(symbol->DeclType)) == typeid(FunctionType) || scope->GetScopeKind() == SymbolScope::Global) {
             sprintf(buffer, "%0llX\t%s", (long long) symbol->Address, symbol->Name.c_str());
-            dump << buffer << std::endl;
+            dump << buffer << ::std::endl;
         }
     }
 
@@ -305,7 +305,7 @@ ILProgram* merge(::std::vector<ILProgram*> ilprograms) {
             sym_merge_list_t ret(pool.next());
             if (CompilationContext::GetInstance()->Debug) {
                 for (sym_merge_list_t::iterator i = ret.begin(), iE = ret.end(); i != iE; ++i) {
-                    std::cout << i->first->first << " with symbol == " << i->first->second << " on scope " << i->second << "\n";
+                    ::std::cout << i->first->first << " with symbol == " << i->first->second << " on scope " << i->second << "\n";
                 }
             }
             if (new_sym_map.find(ret.front().first->first) == new_sym_map.end()) {
@@ -349,7 +349,7 @@ void print_usage(char *) {
     printf("ld0 (link cc0 IL) - A cc0 IL linker.\n"
             "\n"
             "Usage: \n"
-            "    cc0_ld [-g|--debug] [-LDIRs] [-lLIBs] [-o outfile] [input files] [-h|--help]\n"
+            "    ld0 [-g|--debug] [-LDIRs] [-lLIBs] [-o outfile] [input files] [-h|--help]\n"
             "\n"
             "\n"
             "Options:\n"
@@ -386,15 +386,8 @@ try {
 // Only CODE_TYPE_I0 is supported
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
     ::std::vector< ::std::string> cc0_obj_files;
+    ::std::vector< ::std::string> lib_obj_files;
     ::std::list< ::std::string> lib_paths;
-
-    //try to import library path from $CC0_LIB
-    {
-        char* cc0_lib_path = getenv("CCO_LIB");
-        if (cc0_lib_path) {
-            SplitAndStorePath(cc0_lib_path, back_inserter(lib_paths));
-        }
-    }
 
     //parse command line
     for (int i = 1; i < argc; i++) {
@@ -402,7 +395,7 @@ try {
             if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
                 CompilationContext::GetInstance()->OutputFile = argv[++i];
             } else {
-                std::cerr << "invalid argument!\n";
+                ::std::cerr << "invalid argument!\n";
                 return -1;
             }
         } else if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-g") == 0)) {
@@ -414,7 +407,7 @@ try {
             lib_paths.push_back(argv[i] + 2);
         } else if (strncmp(argv[i], "-l", 2) == 0) {
             ::std::string library_file_name(::std::string("lib") + (argv[i] + 2) + ".o");
-            cc0_obj_files.push_back(FindFileInDirs(library_file_name, lib_paths.begin(), lib_paths.end()));
+            lib_obj_files.push_back(library_file_name);
         } else if ((strcmp(argv[i], "--help") == 0) || strcmp(argv[i], "-h") == 0) {
 
             print_usage(argv[0]);
@@ -424,8 +417,21 @@ try {
         }
     }
 
+    //try to import library path from $CC0_LIB
+    {
+        char* cc0_lib_path = getenv("LD0_LIB");
+        if (cc0_lib_path) {
+            SplitAndStorePath(cc0_lib_path, back_inserter(lib_paths));
+        }
+    }
+
+    //Search for libraries
+    for (::std::vector< ::std::string>::iterator i = lib_obj_files.begin(), iE = lib_obj_files.end(); i != iE; ++i) {
+        cc0_obj_files.push_back(FindFileInDirs(*i, lib_paths.begin(), lib_paths.end()));
+    }
+
     if (cc0_obj_files.size() == 0) {
-        std::cerr << "no obj input applied\n";
+        ::std::cerr << "no obj input applied\n";
         return 1;
     }
     if (!CompilationContext::GetInstance()->OutputFile.size()) {
@@ -448,26 +454,26 @@ try {
     SymbolScope::__SetRootScopt(new_il);
 
     if (CompilationContext::GetInstance()->Debug) {
-        std::ofstream ildump(ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".ildump").c_str());
+        ::std::ofstream ildump(ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".ildump").c_str());
         for (::std::vector<ILClass *>::iterator cit = new_il->Claases.begin(), citE = new_il->Claases.end(); cit != citE; ++cit) {
             ILClass *c = *cit;
 
-            ildump << "class " << c->ClassSymbol->Name << std::endl << "{" << std::endl;
+            ildump << "class " << c->ClassSymbol->Name << ::std::endl << "{" << ::std::endl;
 
             for (std::vector<ILFunction *>::iterator fit = c->Functions.begin(); fit != c->Functions.end(); ++fit) {
                 ILFunction *f = *fit;
-                ildump << "    function " << f->FunctionSymbol->Name << std::endl << "    {" << std::endl;
+                ildump << "    function " << f->FunctionSymbol->Name << ::std::endl << "    {" << ::std::endl;
                 for (std::vector<IL>::iterator iit = f->Body.begin(); iit != f->Body.end(); ++iit) {
                     IL &il = *iit;
                     if (il.Opcode == IL::Label) {
-                        ildump << "        " << il.ToString() << std::endl;
+                        ildump << "        " << il.ToString() << ::std::endl;
                     } else {
-                        ildump << "            " << il.ToString() << std::endl;
+                        ildump << "            " << il.ToString() << ::std::endl;
                     }
                 }
-                ildump << "    }" << std::endl;
+                ildump << "    }" << ::std::endl;
             }
-            ildump << "}" << std::endl;
+            ildump << "}" << ::std::endl;
         }
 
         ildump.close();
@@ -476,21 +482,21 @@ try {
     codegen->Generate(context->IL);
 
     if (CompilationContext::GetInstance()->Debug) {
-        std::string dumpFileName, mapFileName;
+        ::std::string dumpFileName, mapFileName;
         dumpFileName = ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".objdump");
         mapFileName = ReplaceFilePathExtension(CompilationContext::GetInstance()->OutputFile, ".map");
 
-        std::ofstream objdump(dumpFileName.c_str());
+        ::std::ofstream objdump(dumpFileName.c_str());
         int64_t currentText = context->TextStart;
         for (std::vector<TargetInstruction *>::iterator iit = context->Target->Code.begin(); iit != context->Target->Code.end(); ++iit) {
             TargetInstruction *inst = *iit;
             char buffer[32];
             sprintf(buffer, "%0llX> \t", (long long) currentText);
-            objdump << buffer << inst->ToString().c_str() << std::endl;
+            objdump << buffer << inst->ToString().c_str() << ::std::endl;
             currentText += inst->GetLength();
         }
 
-        std::ofstream mapdump(mapFileName.c_str());
+        ::std::ofstream mapdump(mapFileName.c_str());
         DumpScope(SymbolScope::GetRootScope(), mapdump);
     }
     printf("Maximum stack frame size: 0x%llX\n", (long long) (context->MaxStackFrame));
@@ -504,10 +510,10 @@ try {
     }
 
     // Write the binary into file
-    std::string outputFile = CompilationContext::GetInstance()->OutputFile;
+    ::std::string outputFile = CompilationContext::GetInstance()->OutputFile;
     BinaryWriter *binwt = new FlatFileWriter();
 
-    std::vector<SectionInfo> sections;
+    ::std::vector<SectionInfo> sections;
     SectionInfo textSection;
     textSection.Name = ".text";
     textSection.RawData = textBuf;
@@ -521,6 +527,6 @@ try {
     return 0;
 }
 catch (std::exception& e) {
-    std::cerr << "exception thrown: " << e.what() << "\n";
+    ::std::cerr << "exception thrown: " << e.what() << "\n";
     return 1;
 }
