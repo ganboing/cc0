@@ -3,7 +3,6 @@
 #include <core/Core.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <assert.h>
 
 IL::IL():Opcode(Nop)
