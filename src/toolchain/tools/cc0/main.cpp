@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
     bool compile_only = false;
     bool debug = false;
 
+    //parse command line
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
             if (argv[i + 1] != NULL && *argv[i + 1] != '-') {
@@ -150,49 +151,49 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    //if cc0 is used as both compiler and linker, invoke cc0 and ld0 recursively
     if (!compile_only) {
         std::vector<std::string> objfiles;
         for (std::vector<std::string>::iterator i = input_files.begin(), iE = input_files.end(); i != iE; ++i) {
             if (GetFileExtension(*i) == ".c" || GetFileExtension(*i) == ".c0") {
+
+                //compile
                 std::string obj = ReplaceFileNameExtension(*i, ".o");
                 objfiles.push_back(obj);
                 std::stringstream cc0_cmdline;
                 cc0_cmdline << "cc0 -c " << *i << " -o " << obj << cpp_args;
                 if (debug) {
                     cc0_cmdline << " -g";
-                    std::cout << "invoking " << cc0_cmdline.str() << "\n";
                 }
+                std::cout << "invoking " << cc0_cmdline.str() << "\n";
                 std::cout.flush();
                 if (system(cc0_cmdline.str().c_str())) {
                     std::cerr << "compiling " << *i << "failed!\n";
                     return 1;
                 }
             } else if (GetFileExtension(*i) == ".o") {
+
+                //no need to compile
                 objfiles.push_back(*i);
             } else {
-                ::std::cerr << "input file " << *i << " ignored!\n";
+                std::cerr << "input file " << *i << " ignored!\n";
             }
         }
         if (output_file.size() == 0) {
             output_file = "a.bin";
         }
         std::stringstream ld0_cmdline;
-        std::string libi0_obj;
-        char* libi0_path = getenv("LIBI0");
-        if (libi0_path == NULL) {
-            std::cerr << "Cannot locate libi0\n";
-            return 1;
-        }
-        ld0_cmdline << "ld0 -o " << output_file << " " << libi0_path << "/libcrt.o";
+        ld0_cmdline << "ld0 -lcrt -o " << output_file;
         for (std::vector<std::string>::iterator i = objfiles.begin(), iE = objfiles.end(); i != iE; ++i) {
             ld0_cmdline << " " << *i;
         }
-        if(debug)
-        {
+        if (debug) {
             ld0_cmdline << " -g";
-            std::cout << "invoking " << ld0_cmdline.str() << "\n";
         }
-        ::std::cout.flush();
+        std::cout << "invoking " << ld0_cmdline.str() << "\n";
+        std::cout.flush();
+
+        //link
         if (system(ld0_cmdline.str().c_str())) {
             std::cerr << "Link failed\n";
             return 1;
@@ -390,7 +391,7 @@ int main(int argc, char **argv) {
 
     try {
         CC0Obj obj(context->CodeDom, context->IL);
-        ::std::ofstream filestream(CompilationContext::GetInstance()->OutputFile.c_str());
+        std::ofstream filestream(CompilationContext::GetInstance()->OutputFile.c_str());
         ::boost::archive::xml_oarchive c0_obj_archive(filestream);
         c0_obj_archive & BOOST_SERIALIZATION_NVP(obj);
     } catch (std::exception& e) {
