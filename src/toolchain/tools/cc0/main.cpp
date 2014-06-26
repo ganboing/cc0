@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <list>
+#include <iterator>
 #include <unistd.h>
 
 #include <boost/archive/xml_oarchive.hpp>
@@ -232,6 +234,18 @@ int main(int argc, char **argv) {
     // Only CODE_TYPE_I0 is supported
     CompilationContext::GetInstance()->CodeType = CODE_TYPE_I0;
 
+    //try import include paths from $CC0_INC
+    {
+        char* cc0_inc = getenv("CC0_INC");
+        if (cc0_inc) {
+            std::list<std::string> cc0_inc_paths;
+            SplitAndStorePath(cc0_inc, back_inserter(cc0_inc_paths));
+            for (std::list<std::string>::iterator i = cc0_inc_paths.begin(), iE = cc0_inc_paths.end(); i != iE; ++i) {
+                cpp_args += " -I" + *i;
+            }
+        }
+    }
+
     ILProgram *il = NULL;
 
     std::vector<std::string> &inputFiles = CompilationContext::GetInstance()->InputFiles;
@@ -252,9 +266,8 @@ int main(int argc, char **argv) {
 
             context->CurrentFileName = inputFile;
 
-            std::string cmdline = "cpp --sysroot ." + cpp_args + " " + inputFile + " -o " + tmpFileName;
-            if (CompilationContext::GetInstance()->Debug)
-                std::cout << "Preprocessing with cmd \"" + cmdline << "\"" << std::endl;
+            std::string cmdline = "cpp -nostdinc --sysroot ." + cpp_args + " " + inputFile + " -o " + tmpFileName;
+            std::cout << "Preprocessing with cmd \"" + cmdline << "\"" << std::endl;
 
             if (system(cmdline.c_str()) != 0) {
                 return 1;

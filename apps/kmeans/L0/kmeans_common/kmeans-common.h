@@ -10,9 +10,9 @@
 #ifndef KMEANS_COMMON_H
 #define KMEANS_COMMON_H
 
-#include "libi0/stdio.h"
-#include "libi0/stddef.h"
-#include "libi0/stdint.h"
+#include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 
 // #define DEBUG
 
