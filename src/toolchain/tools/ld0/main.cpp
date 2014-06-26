@@ -119,7 +119,7 @@ try {
     return obj;
 }
 catch (std::exception& e) {
-    std::cerr << file << "not loaded!\n";
+    std::cerr << file << " not loaded!\n";
     throw;
 }
 
